@@ -1,0 +1,979 @@
+<div class="portal-layout">
+  <!-- Left Vertical Sidebar -->
+  <aside class="portal-sidebar">
+    <!-- Brand Header -->
+    <div class="sidebar-brand">
+      <div class="brand-mark">TVK</div>
+      <div class="brand-text">
+        <h1 class="brand-title">TVK Technologies</h1>
+        <span class="portal-badge">Faculty Portal</span>
+      </div>
+    </div>
+
+    <!-- Trainer Identity Card -->
+    <div class="trainer-sidebar-card" *ngIf="profileData?.trainer as tr">
+      <div class="trainer-avatar">{{ tr.name ? tr.name.charAt(0).toUpperCase() : 'T' }}</div>
+      <div class="trainer-meta">
+        <strong class="trainer-name">{{ tr.name }}</strong>
+        <span class="trainer-id">{{ tr.id }}</span>
+        <span class="status-indicator-pill"
+          [class.status-available]="!isTodayHoliday && (todayWorkAttendance?.status === 'PRESENT' || tr.availability === 'AVAILABLE')"
+          [class.status-leave]="!isTodayHoliday && tr.availability === 'ON_LEAVE'"
+          [class.status-absent]="!isTodayHoliday && (todayWorkAttendance?.status === 'ABSENT' || tr.availability === 'ABSENT')"
+          [style.background]="isTodayHoliday ? '#fef3c7' : null"
+          [style.color]="isTodayHoliday ? '#92400e' : null">
+          ● {{ isTodayHoliday ? ('HOLIDAY: ' + todayHolidayName) : (todayWorkAttendance?.status === 'PRESENT' ? 'PRESENT' : (tr.availability === 'ON_LEAVE' ? 'ON LEAVE' : 'NOT CHECKED IN')) }}
+        </span>
+        <button
+          *ngIf="!isTodayHoliday && todayWorkAttendance?.status !== 'PRESENT' && tr.availability !== 'ON_LEAVE'"
+          type="button"
+          class="btn-sidebar-checkin"
+          [disabled]="isCheckingIn"
+          (click)="checkIn()"
+          title="Click to record your daily attendance"
+        >
+          {{ isCheckingIn ? 'Checking In...' : '✓ Check In for Today' }}
+        </button>
+        <span *ngIf="todayWorkAttendance?.status === 'PRESENT'" class="checked-in-pill">
+          ✓ Checked in today
+        </span>
+      </div>
+    </div>
+
+    <!-- Vertical Navigation Menu -->
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item" [class.active]="activeTab === 'dashboard'" (click)="setTab('dashboard')">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="activeTab === 'my-attendance'" (click)="setTab('my-attendance')">
+        <span class="nav-icon">🗓️</span>
+        <span class="nav-text">My Attendance (Check-In)</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="isStudentRegisterActive"
+        (click)="setStudentRegisterSubTab(studentRegisterSubTab || 'daily')"
+      >
+        <span class="nav-icon">📚</span>
+        <span class="nav-text">Student Register</span>
+        <span class="nav-badge" *ngIf="profileData?.assignedStudents?.length">{{ profileData.assignedStudents.length }}</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="activeTab === 'leave-request'" (click)="setTab('leave-request')">
+        <span class="nav-icon">🏖️</span>
+        <span class="nav-text">Leave &amp; Absence</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="activeTab === 'profile'" (click)="setTab('profile')">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-text">My Profile</span>
+      </button>
+    </nav>
+
+    <!-- Sidebar Footer / Logout -->
+    <div class="sidebar-footer">
+      <button type="button" class="btn-sidebar-logout" (click)="logout()">
+        <span class="logout-icon">🚪</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Right Content Area -->
+  <div class="portal-body-wrapper">
+    <!-- Top Bar for Content Area -->
+    <header class="content-topbar">
+      <div class="page-breadcrumb">
+        <span class="breadcrumb-root">Faculty Portal</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">{{ currentTabTitle }}</span>
+      </div>
+
+      <div class="topbar-user-badge" *ngIf="profileData?.trainer as tr">
+        <span class="badge-specialization">{{ tr.specialization || 'Trainer' }}</span>
+        <span class="user-greeting">{{ tr.name }}</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="portal-main">
+      <div *ngIf="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading your faculty dashboard...</p>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert-box error">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="!loading && profileData as data" class="portal-content">
+
+        <!-- ============================================================== -->
+        <!-- TAB 1: DASHBOARD -->
+        <!-- ============================================================== -->
+        <div *ngIf="activeTab === 'dashboard'" class="tab-pane">
+          <!-- Welcome Banner -->
+          <section class="welcome-banner">
+            <div>
+              <h2>Welcome back, {{ data.trainer?.name }}!</h2>
+              <p class="banner-sub">
+                Manage your cohort curriculum, track student attendance, review batches, and log leave notifications.
+              </p>
+            </div>
+            <div class="banner-actions">
+              <button type="button" class="btn-primary" (click)="setTab('attendance-mark')">
+                📝 Mark Today's Attendance
+              </button>
+            </div>
+          </section>
+
+          <!-- Faculty Daily Work Attendance Check-In Card -->
+          <div class="checkin-hero-card" [class.checked-in]="todayWorkAttendance?.status === 'PRESENT'" [class.on-leave]="todayWorkAttendance?.status === 'ON_LEAVE'">
+            <div class="checkin-info">
+              <span class="checkin-badge">Daily Work Attendance</span>
+              <div *ngIf="todayWorkAttendance?.status === 'PRESENT'" class="checkin-status">
+                <span class="status-dot green"></span>
+                <span class="checkin-title">Checked In for Today</span>
+                <span class="checkin-time" *ngIf="todayWorkAttendance?.checkInTime">at {{ todayWorkAttendance?.checkInTime | date:'shortTime' }}</span>
+              </div>
+              <div *ngIf="todayWorkAttendance?.status === 'ON_LEAVE'" class="checkin-status">
+                <span class="status-dot amber"></span>
+                <span class="checkin-title">Marked On Leave Today</span>
+                <span class="checkin-sub">({{ todayWorkAttendance?.leaveReason || data.trainer?.absenceReason || 'Leave recorded' }})</span>
+              </div>
+              <div *ngIf="!todayWorkAttendance || todayWorkAttendance?.status === 'ABSENT'" class="checkin-status">
+                <span class="status-dot red"></span>
+                <span class="checkin-title">Not Checked In Yet for Today</span>
+                <span class="checkin-sub">Record your daily work attendance to update the management register</span>
+              </div>
+              <div *ngIf="checkInFeedbackMsg" class="checkin-feedback" [class.error]="checkInFeedbackType === 'error'" [class.success]="checkInFeedbackType === 'success'">
+                {{ checkInFeedbackMsg }}
+              </div>
+            </div>
+            <div class="checkin-action" *ngIf="todayWorkAttendance?.status !== 'PRESENT' && todayWorkAttendance?.status !== 'ON_LEAVE'">
+              <button type="button" class="btn-checkin-action" [disabled]="isCheckingIn" (click)="checkIn()">
+                <span *ngIf="!isCheckingIn">✓ Check In for Today</span>
+                <span *ngIf="isCheckingIn">Recording Attendance...</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Absence Notice Banner if on leave -->
+          <div *ngIf="data.trainer?.availability === 'ON_LEAVE'" class="leave-warning-card">
+            <div class="leave-icon">⚠️</div>
+            <div class="leave-details">
+              <strong>You are currently marked ON LEAVE</strong>
+              <p>Reason: {{ data.trainer?.absenceReason || 'Not specified' }}</p>
+              <p *ngIf="data.trainer?.expectedReturnDate">
+                Expected Return: {{ data.trainer?.expectedReturnDate | date:'mediumDate' }}
+              </p>
+            </div>
+            <button type="button" class="btn-resume-duty" (click)="resumeDuties()">Resume Duties / Mark Available</button>
+          </div>
+
+          <!-- Key Stat Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon blue">👨‍🎓</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Enrolled Students</span>
+                <span class="stat-val">{{ data.assignedStudentsCount || 0 }} / {{ data.trainer?.maxCapacity || 20 }}</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon green">📚</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Active Batches</span>
+                <span class="stat-val">{{ data.assignedBatches?.length || 0 }}</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon purple">⭐</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Faculty Rating</span>
+                <span class="stat-val">{{ (data.trainer?.averageRating || 5.0).toFixed(1) }} / 5.0</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon amber">🗓️</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Status</span>
+                <span class="stat-val status-text" [class.text-green]="data.trainer?.availability === 'AVAILABLE'" [class.text-red]="data.trainer?.availability === 'ON_LEAVE'">
+                  {{ data.trainer?.availability }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assigned Batches List -->
+          <section class="portal-section">
+            <div class="section-head">
+              <h3>My Assigned Training Batches</h3>
+              <span class="count-pill">{{ data.assignedBatches?.length || 0 }} Batches</span>
+            </div>
+
+            <div class="batches-grid" *ngIf="data.assignedBatches?.length; else noBatches">
+              <div *ngFor="let batch of data.assignedBatches" class="batch-card">
+                <div class="batch-head">
+                  <strong>{{ batch.batchName }}</strong>
+                  <span class="badge-active">{{ batch.status }}</span>
+                </div>
+                <div class="batch-course">{{ batch.courseName }}</div>
+                <div class="batch-meta">
+                  <span>⏰ {{ batch.timeSlot || '10:00 AM - 12:00 PM' }}</span>
+                  <span>📅 {{ (batch.days || ['Mon', 'Wed', 'Fri']).join(', ') }}</span>
+                </div>
+                <div *ngIf="batch.meetingLink" class="meeting-link-wrap">
+                  <a [href]="batch.meetingLink" target="_blank" rel="noopener noreferrer" class="link-btn">
+                    📹 Launch Virtual Classroom &rarr;
+                  </a>
+                </div>
+              </div>
+            </div>
+            <ng-template #noBatches>
+              <div class="empty-panel">No training batches assigned yet. Your manager will allocate batches shortly.</div>
+            </ng-template>
+          </section>
+
+          <!-- Recent Attendance Log -->
+          <section class="portal-section" *ngIf="data.recentAttendance?.length">
+            <div class="section-head">
+              <h3>Recent Attendance Records (Last 10)</h3>
+              <button type="button" class="btn-link" (click)="setTab('attendance-history')">View Full Register &rarr;</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Candidate Name</th>
+                    <th>Status</th>
+                    <th>Topic Covered</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let rec of data.recentAttendance.slice(0, 10)">
+                    <td>{{ rec.date }}</td>
+                    <td class="font-bold">{{ rec.studentName }}</td>
+                    <td>
+                      <span class="status-tag" [class.tag-present]="rec.status === 'PRESENT'" [class.tag-late]="rec.status === 'LATE'" [class.tag-absent]="rec.status === 'ABSENT'">
+                        {{ rec.status }}
+                      </span>
+                    </td>
+                    <td>{{ rec.topicCovered || '—' }}</td>
+                    <td>{{ rec.notes || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- TAB: MY WORK ATTENDANCE & REGISTER -->
+        <!-- ============================================================== -->
+        <div *ngIf="activeTab === 'my-attendance'" class="tab-pane">
+          <div class="panel-header">
+            <div>
+              <h2>My Work Attendance Register</h2>
+              <p class="panel-sub">Track your daily work attendance logs, check-in timestamps, leaves, and attendance percentage.</p>
+            </div>
+            <div class="header-actions-group">
+              <div class="view-mode-toggle">
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  [class.active]="myAttendanceRangeMode === 'monthly'"
+                  (click)="setAttendanceRangeMode('monthly')"
+                >
+                  📅 Monthly
+                </button>
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  [class.active]="myAttendanceRangeMode === 'weekly'"
+                  (click)="setAttendanceRangeMode('weekly')"
+                >
+                  📆 Weekly
+                </button>
+              </div>
+
+              <div class="month-selector" *ngIf="myAttendanceRangeMode === 'monthly'">
+                <label for="my-month-input">Select Month:</label>
+                <input type="month" id="my-month-input" class="form-input" [(ngModel)]="myAttendanceMonth" (change)="loadMyAttendance()" />
+              </div>
+
+              <div class="week-selector-group" *ngIf="myAttendanceRangeMode === 'weekly'">
+                <button type="button" class="btn-pager" (click)="shiftWeek(-1)" title="Previous Week">‹</button>
+                <span class="range-display">
+                  {{ myAttendanceWeekStart | date:'MMM d' }} – {{ myAttendanceWeekEnd | date:'MMM d, y' }}
+                </span>
+                <button type="button" class="btn-pager" (click)="shiftWeek(1)" title="Next Week">›</button>
+                <button type="button" class="btn-secondary btn-sm" (click)="initWeekRange(); loadMyAttendance()">Current Week</button>
+              </div>
+
+              <button
+                type="button"
+                class="btn-secondary export-csv-btn"
+                [disabled]="isExportingMyAttendance || isLoadingMyAttendance"
+                (click)="exportMyAttendanceCsv()"
+                title="Download CSV report of this attendance range"
+              >
+                {{ isExportingMyAttendance ? 'Exporting...' : '📥 Export CSV' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Institutional Holiday Banner if today is a holiday -->
+          <div class="checkin-banner" *ngIf="isTodayHoliday" style="background:#fef3c7; border: 1px solid #fde68a;">
+            <div class="banner-text">
+              <strong style="color:#92400e;">🏛️ Today is an Institutional Holiday: {{ todayHolidayName }}</strong>
+              <p style="color:#78350f;">No classes or mandatory morning check-in required today. Enjoy your holiday!</p>
+            </div>
+          </div>
+
+          <!-- Quick Check-in action if not checked in and NOT a holiday -->
+          <div class="checkin-banner" *ngIf="!isTodayHoliday && todayWorkAttendance?.status !== 'PRESENT' && todayWorkAttendance?.status !== 'ON_LEAVE'">
+            <div class="banner-text">
+              <strong>Have you checked in for today?</strong>
+              <p>Mark your daily presence to notify management and update your faculty attendance register.</p>
+            </div>
+            <button type="button" class="btn-primary" [disabled]="isCheckingIn" (click)="checkIn()">
+              {{ isCheckingIn ? 'Recording...' : '✓ Check In for Today' }}
+            </button>
+          </div>
+
+          <div *ngIf="checkInFeedbackMsg" class="alert-box" [class.success]="checkInFeedbackType === 'success'" [class.error]="checkInFeedbackType === 'error'">
+            {{ checkInFeedbackMsg }}
+          </div>
+
+          <!-- Attendance Stats Grid -->
+          <div class="stats-grid" *ngIf="myAttendanceStats as stats">
+            <div class="stat-card">
+              <div class="stat-icon green">✔️</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Days Present</span>
+                <span class="stat-val">{{ stats.presentDays }} Days</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon amber">🏖️</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Leaves Taken</span>
+                <span class="stat-val">{{ stats.leaveDays }} Days</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red">❌</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Uninformed Absent</span>
+                <span class="stat-val">{{ stats.absentDays }} Days</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue">📈</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Attendance Rate</span>
+                <span class="stat-val">{{ stats.attendanceRate }}%</span>
+              </div>
+            </div>
+            <div class="stat-card" style="border-left: 3px solid #f59e0b;">
+              <div class="stat-icon amber">⚠️</div>
+              <div class="stat-data">
+                <span class="stat-lbl">Late / Missed Check-ins</span>
+                <span class="stat-val">{{ stats.lateOrMissedCount ?? 0 }} Times</span>
+                <span style="font-size: 0.72rem; color: #b45309; font-weight: 600; display: block; margin-top: 2px;">
+                  <ng-container *ngIf="(stats.convertedLeaveDays ?? 0) > 0">
+                    🚨 {{ stats.convertedLeaveDays }}d Leave Deducted ({{ stats.activeStrikes ?? 0 }}/3 Strikes)
+                  </ng-container>
+                  <ng-container *ngIf="!(stats.convertedLeaveDays ?? 0)">
+                    ⚠️ {{ stats.activeStrikes ?? 0 }}/3 Strikes (3 = 1 Day Leave)
+                  </ng-container>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly/Weekly Register Table -->
+          <div class="portal-section">
+            <div class="section-head">
+              <h3 *ngIf="myAttendanceRangeMode === 'monthly'">Attendance Register for {{ myAttendanceMonth }}</h3>
+              <h3 *ngIf="myAttendanceRangeMode === 'weekly'">Weekly Register ({{ myAttendanceWeekStart | date:'mediumDate' }} – {{ myAttendanceWeekEnd | date:'mediumDate' }})</h3>
+              <span class="count-pill">{{ myAttendanceRecords.length }} Day(s) Logged</span>
+            </div>
+
+            <div *ngIf="isLoadingMyAttendance" class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading your attendance register...</p>
+            </div>
+
+            <div *ngIf="!isLoadingMyAttendance && myAttendanceRecords.length === 0" class="empty-panel">
+              No attendance records logged for this month yet. Check in daily to build your work record.
+            </div>
+
+            <div class="table-container" *ngIf="!isLoadingMyAttendance && myAttendanceRecords.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Check-In Time</th>
+                    <th>Leave Type</th>
+                    <th>Reason / Handover Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let rec of myAttendanceRecords">
+                    <td class="font-bold">{{ rec.date }}</td>
+                    <td>
+                      <span class="status-tag"
+                        [class.tag-present]="rec.status === 'PRESENT'"
+                        [class.tag-late]="rec.status === 'ON_LEAVE'"
+                        [class.tag-absent]="rec.status === 'ABSENT'">
+                        {{ rec.status }}
+                      </span>
+                      <span *ngIf="rec.isLateCheckIn && rec.status === 'PRESENT'" class="status-tag tag-late" style="margin-left: 4px; font-size: 0.7rem;" title="Checked in after cut-off time (Late strike)">
+                        LATE (Strike)
+                      </span>
+                    </td>
+                    <td>{{ rec.checkInTime ? (rec.checkInTime | date:'shortTime') : '—' }}</td>
+                    <td>{{ rec.leaveType || '—' }}</td>
+                    <td>
+                      <div *ngIf="rec.leaveReason" class="leave-cell-reason">
+                        <strong>{{ rec.leaveReason }}</strong>
+                        <div *ngIf="rec.handoverNotes" class="handover-note">Notes: {{ rec.handoverNotes }}</div>
+                      </div>
+                      <span *ngIf="!rec.leaveReason">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- CONSOLIDATED TAB: STUDENT REGISTER -->
+        <!-- ============================================================== -->
+        <div *ngIf="isStudentRegisterActive" class="tab-pane">
+          <div class="panel-header" style="margin-bottom: 0.75rem;">
+            <div>
+              <h2>Student Register &amp; Attendance Tracking</h2>
+              <p class="panel-sub">Consolidated student attendance registry: record daily sessions, view audited monthly matrix, and manage student rosters.</p>
+            </div>
+          </div>
+
+          <!-- Subnav Pill Strip -->
+          <div class="student-register-subnav-strip">
+            <button
+              type="button"
+              class="subnav-pill"
+              [class.active]="studentRegisterSubTab === 'daily'"
+              (click)="setStudentRegisterSubTab('daily')"
+            >
+              📝 Daily Attendance &amp; Topics
+            </button>
+            <button
+              type="button"
+              class="subnav-pill"
+              [class.active]="studentRegisterSubTab === 'monthly'"
+              (click)="setStudentRegisterSubTab('monthly')"
+            >
+              📅 Monthly Register Matrix
+            </button>
+            <button
+              type="button"
+              class="subnav-pill"
+              [class.active]="studentRegisterSubTab === 'roster'"
+              (click)="setStudentRegisterSubTab('roster')"
+            >
+              👨‍🎓 Candidate Students Roster ({{ profileData?.assignedStudents?.length || 0 }})
+            </button>
+          </div>
+
+          <!-- SUB-VIEW 1: DAILY ATTENDANCE & CURRICULUM MARKING -->
+          <div *ngIf="studentRegisterSubTab === 'daily'">
+
+          <div *ngIf="attendanceFeedback" class="alert-box" [class.success]="attendanceFeedbackType === 'success'" [class.error]="attendanceFeedbackType === 'error'">
+            {{ attendanceFeedback }}
+          </div>
+
+          <!-- Institutional Holiday Alert for the selected date -->
+          <div *ngIf="getHolidayForDate(markDate) as hol" class="alert-box" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; margin-bottom:1rem; display:flex; align-items:center; gap:0.6rem;">
+            <span style="font-size:1.4rem;">🏛️</span>
+            <div>
+              <strong style="font-size:0.95rem;">Institutional Holiday: {{ hol.name }} ({{ hol.type }})</strong>
+              <p style="margin:2px 0 0 0; font-size:0.85rem; color:#78350f;">
+                {{ markDate }} is registered as an institutional holiday. No classes or attendance submissions are scheduled for this day.
+              </p>
+            </div>
+          </div>
+
+          <!-- Faculty Work Attendance Notice & Quick Check-in -->
+          <div class="faculty-work-checkin-bar" [class.is-checked-in]="todayWorkAttendance?.status === 'PRESENT'">
+            <div class="work-checkin-info">
+              <span class="work-checkin-badge">My Daily Faculty Attendance:</span>
+              <strong *ngIf="todayWorkAttendance?.status === 'PRESENT'" class="text-green">
+                ✓ You are checked in for today ({{ todayWorkAttendance?.checkInTime | date:'shortTime' }})
+              </strong>
+              <strong *ngIf="todayWorkAttendance?.status !== 'PRESENT'" class="text-red">
+                ⚠️ You have not recorded your check-in for today yet!
+              </strong>
+            </div>
+            <button
+              *ngIf="todayWorkAttendance?.status !== 'PRESENT'"
+              type="button"
+              class="btn-primary btn-sm"
+              [disabled]="isCheckingIn"
+              (click)="checkIn()"
+            >
+              {{ isCheckingIn ? 'Checking In...' : '✓ Check In for Today' }}
+            </button>
+          </div>
+
+          <!-- Filter & Topic Bar -->
+          <div class="attendance-control-bar">
+            <div class="control-field">
+              <label for="att-date">Session Date *</label>
+              <input type="date" id="att-date" class="form-input" [(ngModel)]="markDate" />
+            </div>
+
+            <div class="control-field" *ngIf="data.assignedBatches?.length">
+              <label for="att-batch">Filter By Batch</label>
+              <select id="att-batch" class="form-input" [(ngModel)]="markBatchId" (change)="onMarkBatchChange()">
+                <option value="ALL">All Batches ({{ data.assignedStudents?.length || 0 }} Students)</option>
+                <option *ngFor="let b of data.assignedBatches" [value]="b.id || b._id">{{ b.batchName }} ({{ b.courseName }})</option>
+              </select>
+            </div>
+
+            <div class="control-field flex-grow">
+              <label for="att-topic">Session Topic / Curriculum Covered</label>
+              <input type="text" id="att-topic" class="form-input" [(ngModel)]="markTopic" placeholder="e.g. Angular Components, RxJS Observables, Form Validation" />
+            </div>
+          </div>
+
+          <!-- Quick Set Buttons -->
+          <div class="bulk-action-bar">
+            <span class="bulk-lbl">Quick Mark All:</span>
+            <button type="button" class="btn-bulk btn-bulk-present" (click)="setAllStatus('PRESENT')">✓ All Present</button>
+            <button type="button" class="btn-bulk btn-bulk-late" (click)="setAllStatus('LATE')">⏱ All Late</button>
+            <button type="button" class="btn-bulk btn-bulk-absent" (click)="setAllStatus('ABSENT')">✕ All Absent</button>
+          </div>
+
+          <!-- Student Attendance Table -->
+          <div class="table-container" *ngIf="markRows.length; else noMarkStudents">
+            <table class="data-table marking-table">
+              <thead>
+                <tr>
+                  <th>Candidate ID</th>
+                  <th>Candidate Name</th>
+                  <th>Course</th>
+                  <th style="min-width: 250px;">Attendance Status</th>
+                  <th>Remarks / Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of markRows; let i = index">
+                  <td class="font-bold">{{ row.studentId }}</td>
+                  <td><strong>{{ row.studentName }}</strong></td>
+                  <td><span class="course-badge">{{ row.courseName }}</span></td>
+                  <td>
+                    <div class="radio-pill-group">
+                      <button
+                        type="button"
+                        class="btn-status-pill pill-present"
+                        [class.active]="row.status === 'PRESENT'"
+                        (click)="row.status = 'PRESENT'">
+                        ✓ Present
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-status-pill pill-late"
+                        [class.active]="row.status === 'LATE'"
+                        (click)="row.status = 'LATE'">
+                        ⏱ Late
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-status-pill pill-absent"
+                        [class.active]="row.status === 'ABSENT'"
+                        (click)="row.status = 'ABSENT'">
+                        ✕ Absent
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <input type="text" class="table-input" [(ngModel)]="row.notes" placeholder="Optional notes (e.g. informed leave, late by 15 mins)" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noMarkStudents>
+            <div class="empty-panel">No students found for the selected batch.</div>
+          </ng-template>
+
+          <!-- Submit Footer -->
+          <div class="submit-action-footer" *ngIf="markRows.length">
+            <div class="summary-pills">
+              <span class="summary-pill pill-green">Present: {{ getStatusCount('PRESENT') }}</span>
+              <span class="summary-pill pill-yellow">Late: {{ getStatusCount('LATE') }}</span>
+              <span class="summary-pill pill-red">Absent: {{ getStatusCount('ABSENT') }}</span>
+            </div>
+            <button type="button" class="btn-save-attendance" [disabled]="isSavingAttendance" (click)="saveAttendance()">
+              <span *ngIf="!isSavingAttendance">💾 Save &amp; Submit Attendance ({{ markRows.length }} Candidates)</span>
+              <span *ngIf="isSavingAttendance">Saving attendance...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SUB-VIEW 2: MONTHLY ATTENDANCE REGISTER & MATRIX -->
+        <div *ngIf="studentRegisterSubTab === 'monthly'">
+          <div class="panel-header" style="margin-top: 0.5rem;">
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b;">Monthly Attendance Register &amp; Matrix</h3>
+              <p class="panel-sub" style="margin-top: 0.25rem;">View date-wise attendance records, monthly attendance percentages, and risk factors for your cohorts.</p>
+            </div>
+            <div class="header-actions">
+              <button type="button" class="btn-export-csv" (click)="exportHistoryCsv()">
+                📥 Export Register CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter Controls -->
+          <div class="attendance-control-bar">
+            <div class="control-field">
+              <label for="hist-month">Select Month</label>
+              <input type="month" id="hist-month" class="form-input" [(ngModel)]="historyMonth" (change)="loadAttendanceHistory()" />
+            </div>
+
+            <div class="control-field" *ngIf="data.assignedBatches?.length">
+              <label for="hist-batch">Filter By Batch</label>
+              <select id="hist-batch" class="form-input" [(ngModel)]="historyBatchId" (change)="loadAttendanceHistory()">
+                <option value="ALL">All Batches</option>
+                <option *ngFor="let b of data.assignedBatches" [value]="b.id || b._id">{{ b.batchName }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="isLoadingHistory" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading attendance register...</p>
+          </div>
+
+          <!-- Attendance Matrix Grid -->
+          <div *ngIf="!isLoadingHistory" class="matrix-wrapper">
+            <div class="table-container matrix-table-container">
+              <table class="matrix-table">
+                <thead>
+                  <tr>
+                    <th class="sticky-col">Candidate</th>
+                    <th class="sticky-col-2">Course</th>
+                    <th *ngFor="let day of historyDaysInMonth" class="day-col">
+                      {{ day }}
+                    </th>
+                    <th>Total</th>
+                    <th>Present</th>
+                    <th>Late</th>
+                    <th>Absent</th>
+                    <th>Att. %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of historyMatrixRows">
+                    <td class="sticky-col font-bold">{{ row.studentName }}</td>
+                    <td class="sticky-col-2"><span class="course-badge">{{ row.courseName }}</span></td>
+                    <td *ngFor="let day of historyDaysInMonth" class="day-cell">
+                      <span *ngIf="row.dayStatus[day] === 'PRESENT'" class="cell-pill p-pill" title="Present">P</span>
+                      <span *ngIf="row.dayStatus[day] === 'LATE'" class="cell-pill l-pill" title="Late">L</span>
+                      <span *ngIf="row.dayStatus[day] === 'ABSENT'" class="cell-pill a-pill" title="Absent">A</span>
+                      <span *ngIf="!row.dayStatus[day]" class="cell-pill empty-pill">—</span>
+                    </td>
+                    <td>{{ row.totalSessions }}</td>
+                    <td class="text-green font-bold">{{ row.presentCount }}</td>
+                    <td class="text-yellow font-bold">{{ row.lateCount }}</td>
+                    <td class="text-red font-bold">{{ row.absentCount }}</td>
+                    <td>
+                      <span class="pct-badge" [class.pct-good]="row.percent >= 85" [class.pct-fair]="row.percent >= 75 && row.percent < 85" [class.pct-risk]="row.percent < 75">
+                        {{ row.percent }}%
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-VIEW 3: CANDIDATE STUDENTS ROSTER & DOSSIER -->
+        <div *ngIf="studentRegisterSubTab === 'roster'">
+          <div class="panel-header" style="margin-top: 0.5rem;">
+            <div>
+              <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b;">Candidate Students Roster</h3>
+              <p class="panel-sub" style="margin-top: 0.25rem;">View assigned students, contact details, attendance profiles, and training progress.</p>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="search-filter-bar">
+            <input
+              type="text"
+              class="form-input search-input"
+              [(ngModel)]="studentSearchQuery"
+              placeholder="🔍 Search candidate by name, student ID, email, or phone..."
+            />
+            <select class="form-input filter-select" [(ngModel)]="studentBatchFilter" *ngIf="data.assignedBatches?.length">
+              <option value="ALL">All Batches</option>
+              <option *ngFor="let b of data.assignedBatches" [value]="b.id || b._id">{{ b.batchName }}</option>
+            </select>
+          </div>
+
+          <!-- Students Table -->
+          <div class="table-container" *ngIf="filteredStudents.length; else noFoundStudents">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Candidate Name</th>
+                  <th>Course</th>
+                  <th>Email &amp; Contact</th>
+                  <th>Joined Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let s of filteredStudents">
+                  <td class="font-bold">{{ s.id || s._id }}</td>
+                  <td><strong>{{ s.name }}</strong></td>
+                  <td><span class="course-badge">{{ s.enrolledCourse || s.courseName }}</span></td>
+                  <td>{{ s.email }} &bull; {{ s.phone || 'No phone' }}</td>
+                  <td>{{ s.createdAt | date:'mediumDate' }}</td>
+                  <td>
+                    <button type="button" class="btn-action-small" (click)="viewStudentSummary(s.id || s._id)">
+                      🔍 View Dossier
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noFoundStudents>
+            <div class="empty-panel">No students match your search criteria.</div>
+          </ng-template>
+
+          <!-- Student Summary Modal -->
+          <div *ngIf="selectedStudentSummary" class="modal-backdrop">
+            <div class="modal-card">
+              <div class="modal-header">
+                <h3>Candidate Dossier: {{ selectedStudentSummary.student?.name }}</h3>
+                <button type="button" class="btn-close" (click)="closeStudentSummary()">✕</button>
+              </div>
+              <div class="modal-body">
+                <div class="dossier-grid">
+                  <div>
+                    <span class="dossier-lbl">Student ID</span>
+                    <strong>{{ selectedStudentSummary.student?.id }}</strong>
+                  </div>
+                  <div>
+                    <span class="dossier-lbl">Course</span>
+                    <strong>{{ selectedStudentSummary.student?.courseName }}</strong>
+                  </div>
+                  <div>
+                    <span class="dossier-lbl">Email</span>
+                    <span>{{ selectedStudentSummary.student?.email }}</span>
+                  </div>
+                  <div>
+                    <span class="dossier-lbl">Phone</span>
+                    <span>{{ selectedStudentSummary.student?.phone || '—' }}</span>
+                  </div>
+                </div>
+
+                <!-- Attendance Metrics -->
+                <div class="dossier-metrics" *ngIf="selectedStudentSummary.attendanceStats as ast">
+                  <div class="metric-box">
+                    <span class="metric-val">{{ ast.attendancePercent }}%</span>
+                    <span class="metric-lbl">Attendance Rate</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-val text-green">{{ ast.presentCount }}</span>
+                    <span class="metric-lbl">Sessions Present</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-val text-yellow">{{ ast.lateCount }}</span>
+                    <span class="metric-lbl">Sessions Late</span>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-val text-red">{{ ast.absentCount }}</span>
+                    <span class="metric-lbl">Sessions Absent</span>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn-secondary" (click)="closeStudentSummary()">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: LEAVE & ABSENCE MANAGEMENT -->
+        <!-- ============================================================== -->
+        <div *ngIf="activeTab === 'leave-request'" class="tab-pane">
+          <div class="panel-header">
+            <div>
+              <h2>Faculty Leave &amp; Absence Request</h2>
+              <p class="panel-sub">Notify TVK Management of upcoming leave so backup trainers can be scheduled without curriculum interruption.</p>
+            </div>
+          </div>
+
+          <div *ngIf="leaveFeedbackMsg" class="alert-box" [class.success]="leaveFeedbackType === 'success'" [class.error]="leaveFeedbackType === 'error'">
+            {{ leaveFeedbackMsg }}
+          </div>
+
+          <!-- Current Status Banner -->
+          <div class="availability-card" [class.card-available]="data.trainer?.availability === 'AVAILABLE'" [class.card-leave]="data.trainer?.availability === 'ON_LEAVE'">
+            <div class="avail-info">
+              <span class="avail-title">Current Status:</span>
+              <span class="avail-val">{{ data.trainer?.availability }}</span>
+              <p *ngIf="data.trainer?.absenceReason">Current reason: {{ data.trainer?.absenceReason }}</p>
+            </div>
+            <div *ngIf="data.trainer?.availability === 'ON_LEAVE'">
+              <button type="button" class="btn-resume-duty" (click)="resumeDuties()">Resume Duties / Mark Available</button>
+            </div>
+          </div>
+
+          <!-- Submit Leave Form -->
+          <div class="form-card" *ngIf="data.trainer?.availability !== 'ON_LEAVE'">
+            <h3>Apply for Leave / Report Absence</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="lv-type">Leave Category *</label>
+                <select id="lv-type" class="form-input" [(ngModel)]="leaveType">
+                  <option value="CASUAL">Casual Leave</option>
+                  <option value="SICK">Medical / Sick Leave</option>
+                  <option value="EMERGENCY">Emergency Leave</option>
+                  <option value="PLANNED">Planned Vacation</option>
+                  <option value="OFFICIAL">Official Duty / Exam</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="lv-start">Leave Start Date *</label>
+                <input type="date" id="lv-start" class="form-input" [(ngModel)]="leaveStartDate" />
+              </div>
+
+              <div class="form-group">
+                <label for="lv-end">Expected Return Date</label>
+                <input type="date" id="lv-end" class="form-input" [(ngModel)]="leaveReturnDate" />
+              </div>
+
+              <div class="form-group full-col">
+                <label for="lv-reason">Reason for Absence / Leave *</label>
+                <textarea id="lv-reason" class="form-input" rows="3" [(ngModel)]="leaveReason" placeholder="Please mention the exact reason so your manager can take appropriate handover actions..."></textarea>
+              </div>
+
+              <div class="form-group full-col">
+                <label for="lv-handover">Curriculum Handover Notes for Backup Faculty</label>
+                <textarea id="lv-handover" class="form-input" rows="2" [(ngModel)]="leaveHandoverNotes" placeholder="Specify batch topics to cover, assigned exercises, or key student instructions..."></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-primary btn-leave" [disabled]="isSubmittingLeave" (click)="submitLeaveRequest()">
+                <span *ngIf="!isSubmittingLeave">Notify Management &amp; Apply Leave</span>
+                <span *ngIf="isSubmittingLeave">Submitting...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- TAB 7: MY PROFILE & PASSWORD -->
+        <!-- ============================================================== -->
+        <div *ngIf="activeTab === 'profile'" class="tab-pane">
+          <div class="panel-header">
+            <div>
+              <h2>Faculty Profile &amp; Security Settings</h2>
+              <p class="panel-sub">Review your credentials, allocated curriculum specialization, and update your access password.</p>
+            </div>
+          </div>
+
+          <div class="profile-layout-grid">
+            <!-- Profile Details Card -->
+            <div class="profile-card">
+              <h3>Faculty Information</h3>
+              <div class="profile-row">
+                <span class="p-lbl">Trainer ID</span>
+                <span class="p-val font-bold">{{ data.trainer?.id }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Full Name</span>
+                <span class="p-val">{{ data.trainer?.name }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Email Address</span>
+                <span class="p-val">{{ data.trainer?.email }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Contact Phone</span>
+                <span class="p-val">{{ data.trainer?.phone || 'Not provided' }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Specialization</span>
+                <span class="p-val">{{ data.trainer?.specialization || 'General Training' }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Employment Type</span>
+                <span class="p-val">{{ data.trainer?.employmentType }}</span>
+              </div>
+              <div class="profile-row">
+                <span class="p-lbl">Student Capacity</span>
+                <span class="p-val">{{ data.trainer?.currentStudentCount || 0 }} / {{ data.trainer?.maxCapacity || 20 }} Students</span>
+              </div>
+            </div>
+
+            <!-- Password Change Card -->
+            <div class="profile-card">
+              <h3>Change Account Password</h3>
+              <div *ngIf="passwordFeedbackMsg" class="alert-box" [class.success]="passwordFeedbackType === 'success'" [class.error]="passwordFeedbackType === 'error'">
+                {{ passwordFeedbackMsg }}
+              </div>
+
+              <div class="form-group">
+                <label for="pwd-cur">Current Password *</label>
+                <input type="password" id="pwd-cur" class="form-input" [(ngModel)]="currentPassword" />
+              </div>
+
+              <div class="form-group">
+                <label for="pwd-new">New Password * (min 8 characters)</label>
+                <input type="password" id="pwd-new" class="form-input" [(ngModel)]="newPassword" />
+              </div>
+
+              <div class="form-group">
+                <label for="pwd-cnf">Confirm New Password *</label>
+                <input type="password" id="pwd-cnf" class="form-input" [(ngModel)]="confirmPassword" />
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn-primary" [disabled]="isChangingPassword" (click)="changePassword()">
+                  <span *ngIf="!isChangingPassword">Update Password</span>
+                  <span *ngIf="isChangingPassword">Updating...</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>

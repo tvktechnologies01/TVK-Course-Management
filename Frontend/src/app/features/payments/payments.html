@@ -1,0 +1,372 @@
+<div class="payments-page">
+  <!-- Header -->
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">FINANCE &amp; ACCOUNTS • TRANSACTIONS</span>
+      <h1>Payment Management</h1>
+      <p class="subtitle">
+        View candidate payment history, transaction details, submitted payment proof, and official payment QR controls.
+      </p>
+    </div>
+    <div class="header-badges">
+      <span class="count-badge" *ngIf="activeTab === 'TRANSACTIONS'">{{ filteredPayments.length }} Transactions</span>
+    </div>
+
+    <!-- Category / Navigation Tabs -->
+    <div class="category-tabs">
+      <button
+        type="button"
+        class="cat-tab-btn"
+        [class.active]="activeTab === 'TRANSACTIONS'"
+        (click)="switchTab('TRANSACTIONS')"
+      >
+        <span class="cat-icon">💳</span>
+        <span>Payment Transactions</span>
+        <span class="cat-count">{{ filteredPayments.length }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="cat-tab-btn"
+        [class.active]="activeTab === 'QR_CONTROLS'"
+        (click)="switchTab('QR_CONTROLS')"
+      >
+        <span class="cat-icon">📱</span>
+        <span>Official Payment QR Controls</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Alerts -->
+  <div *ngIf="activeTab === 'TRANSACTIONS' && successMessage" class="alert-box success" role="alert">
+    ✓ {{ successMessage }}
+  </div>
+  <div *ngIf="activeTab === 'TRANSACTIONS' && errorMessage" class="alert-box error" role="alert">
+    ⚠ {{ errorMessage }}
+  </div>
+
+    <!-- QR CONTROLS SECTION -->
+  <div *ngIf="activeTab === 'QR_CONTROLS'" class="qr-controls-container">
+    <div class="qr-controls-card">
+      <div class="qr-controls-header">
+        <div class="qr-title-group">
+          <span class="qr-header-icon">📱</span>
+          <div>
+            <h3>Official Payment QR Controls</h3>
+            <p>Single official TVK payment QR code shared across all candidates, payment sections, and receipts.</p>
+          </div>
+        </div>
+        <span class="role-permission-badge" [class.authorized]="canManagePaymentQr">
+          {{ canManagePaymentQr ? '✓ Manager Access (Authorized to Replace)' : '👁 View Only (Manager Authorization Required)' }}
+        </span>
+      </div>
+
+      <div *ngIf="commonQrSuccess" class="alert-box success">
+        ✓ {{ commonQrSuccess }}
+      </div>
+      <div *ngIf="commonQrError" class="alert-box error">
+        ⚠ {{ commonQrError }}
+      </div>
+
+      <div class="qr-controls-body">
+        <div class="qr-large-preview-card">
+          <div *ngIf="commonPaymentQr" class="qr-large-image-box">
+            <img [src]="commonPaymentQr" alt="Official Shared Payment QR Code" class="qr-large-img" />
+            <span class="qr-active-pill">✓ Active Shared QR Code</span>
+          </div>
+          <div *ngIf="!commonPaymentQr" class="qr-large-placeholder">
+            <span class="placeholder-icon">📱</span>
+            <span class="placeholder-title">No Common QR Code Configured</span>
+            <span class="placeholder-sub" *ngIf="canManagePaymentQr">Upload the official payment QR code image below</span>
+          </div>
+        </div>
+
+        <div class="qr-controls-actions">
+          <div class="info-card-note">
+            <h4>Common QR Code Synchronization</h4>
+            <p>
+              This is the single official payment QR code stored in the database. When an authorized Manager/Admin replaces it, the updated QR code automatically appears in the payment section of every candidate—including all existing and newly added candidates.
+            </p>
+          </div>
+
+          <div *ngIf="canManagePaymentQr" class="qr-upload-panel">
+            <input
+              #commonQrFileInput
+              type="file"
+              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+              (change)="onCommonQrSelected($event)"
+              class="hidden-file-input"
+            />
+            <button
+              type="button"
+              class="btn-primary-lg"
+              (click)="commonQrFileInput.click()"
+              [disabled]="uploadingCommonQr"
+            >
+              {{ uploadingCommonQr ? 'Uploading & Synchronizing...' : (commonPaymentQr ? '🔄 Replace Official Payment QR Code Image' : '📤 Upload Official Payment QR Code Image') }}
+            </button>
+            <span class="upload-hint">Supported formats: PNG, JPG, JPEG (Max 2MB). Persists across all candidates.</span>
+          </div>
+
+          <div *ngIf="!canManagePaymentQr" class="qr-readonly-notice">
+            <span class="lock-icon">🔒</span>
+            <span>You have View-Only access. Replacing the official payment QR code requires Manager/Admin authorization.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div *ngIf="activeTab === 'TRANSACTIONS'" class="filter-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="applyFilter()"
+        placeholder="Search by candidate, transaction ref, receipt #, course..."
+      />
+      <button *ngIf="searchQuery" class="clear-search" (click)="searchQuery = ''; applyFilter()">×</button>
+    </div>
+
+    <div class="filter-actions">
+      <div class="select-group">
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilter()">
+          <option value="ALL">All Payments</option>
+          <option value="Verification Pending">Verification Pending</option>
+          <option value="Verified">Verified</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="activeTab === 'TRANSACTIONS' && loading" class="state-card" role="status">
+    <div class="spinner"></div>
+    <p>Loading candidate payment records from database...</p>
+  </div>
+
+  <!-- Payments Table -->
+  <div *ngIf="activeTab === 'TRANSACTIONS' && !loading" class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Candidate</th>
+          <th>Candidate Contact</th>
+          <th>Course Title</th>
+          <th>Amount (₹)</th>
+          <th>Transaction Ref / UTR</th>
+          <th>Payment Proof</th>
+          <th>Payment QR Code</th>
+          <th>Status</th>
+          <th>Official Receipt / Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filteredPayments">
+          <td>{{ p.paidAt | date:'mediumDate' }}</td>
+          <td>
+            <div class="candidate-identity">
+              <span class="name">{{ p.candidateName }}</span>
+              <span class="id">{{ p.candidateId }}</span>
+            </div>
+          </td>
+          <td>
+            <div class="candidate-identity">
+              <span>{{ p.candidateEmail || 'No email' }}</span>
+              <span>{{ p.candidatePhone || 'No phone' }}</span>
+            </div>
+          </td>
+          <td>{{ p.courseName }}</td>
+          <td><strong>₹{{ p.amount | number }}</strong></td>
+          <td><code>{{ p.transactionRef }}</code></td>
+          <td>
+            <div *ngIf="p.paymentProofUrl" class="proof-actions-row">
+              <button type="button" class="btn-proof-view" (click)="viewPaymentProof(p)" title="View Proof">
+                👁 View
+              </button>
+              <button type="button" class="btn-proof-download" (click)="downloadPaymentProof(p)" title="Download Proof Image">
+                📥 Download
+              </button>
+            </div>
+            <span *ngIf="!p.paymentProofUrl" class="text-muted">No proof</span>
+          </td>
+          <td>
+            <button
+              *ngIf="p.paymentQrCode"
+              type="button"
+              class="btn-proof-view"
+              (click)="openPaymentQr(p)"
+            >
+              👁 View QR
+            </button>
+            <span *ngIf="!p.paymentQrCode" class="text-muted">No QR configured</span>
+          </td>
+          <td>
+            <span class="badge-status" [ngClass]="p.status.toLowerCase().replace(' ', '-')">
+              {{ p.status }}
+            </span>
+          </td>
+          <td>
+            <div class="actions-group">
+              <button
+                *ngIf="canManagePayments && p.status === 'Verification Pending'"
+                type="button"
+                class="btn-verify"
+                (click)="openVerifyModal(p)"
+              >
+                ✓ Verify
+              </button>
+
+              <button
+                *ngIf="canManagePayments && p.status === 'Verification Pending'"
+                type="button"
+                class="btn-reject"
+                (click)="openRejectModal(p)"
+              >
+                ✕ Reject
+              </button>
+
+              <button
+                *ngIf="p.status === 'Verified' && p.receiptNumber"
+                type="button"
+                class="btn-download"
+                (click)="downloadReceipt(p.receiptNumber)"
+                [disabled]="downloadingReceiptNum === p.receiptNumber"
+              >
+                ⬇ {{ downloadingReceiptNum === p.receiptNumber ? 'PDF...' : 'Receipt (' + p.receiptNumber + ')' }}
+              </button>
+
+              <span *ngIf="p.status === 'Rejected'" class="text-danger-sm">
+                {{ p.rejectionReason || 'Rejected' }}
+              </span>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="filteredPayments.length === 0">
+          <td colspan="10" class="empty-state">
+            No payment records match your filter criteria.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="selectedPaymentQr" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card qr-viewer">
+      <header class="modal-header">
+        <div>
+          <h3>Payment QR Code</h3>
+          <p>Saved QR code for <strong>{{ selectedPaymentQr.candidateName }}</strong>.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closePaymentQr()">×</button>
+      </header>
+      <img [src]="selectedPaymentQr.paymentQrCode" alt="Candidate payment QR code" class="payment-qr-preview" />
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closePaymentQr()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verify Modal -->
+  <div *ngIf="canManagePayments && verifyingPayment" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Verify Payment</h3>
+          <p>Confirm verified funds received for <strong>{{ verifyingPayment.candidateName }}</strong>.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeVerifyModal()">×</button>
+      </header>
+
+      <div *ngIf="verifyingPaymentError" class="modal-alert-error">
+        <span>⚠ {{ verifyingPaymentError }}</span>
+      </div>
+
+      <form (ngSubmit)="submitVerify()" class="modal-form">
+        <div class="form-field">
+          <label for="verifiedAmountInput">Verified Amount (₹) *</label>
+          <input
+            id="verifiedAmountInput"
+            type="number"
+            min="1"
+            [(ngModel)]="verifiedAmountInput"
+            name="verifiedAmountInput"
+            required
+            placeholder="Enter verified amount"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="verificationNotes">Audit Notes (Optional)</label>
+          <input
+            id="verificationNotes"
+            type="text"
+            [(ngModel)]="verificationNotes"
+            name="verificationNotes"
+            placeholder="e.g. Bank statement verified"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeVerifyModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-primary"
+            (click)="submitVerify()"
+            [disabled]="submittingVerification || !verifiedAmountInput || verifiedAmountInput <= 0"
+          >
+            {{ submittingVerification ? 'Confirming...' : 'Confirm' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div *ngIf="canManagePayments && rejectingPayment" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Reject Payment</h3>
+          <p>Provide rejection reason for <strong>{{ rejectingPayment.candidateName }}</strong>.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeRejectModal()">×</button>
+      </header>
+
+      <div *ngIf="rejectingPaymentError" class="modal-alert-error">
+        <span>⚠ {{ rejectingPaymentError }}</span>
+      </div>
+
+      <form (ngSubmit)="submitReject()" class="modal-form">
+        <div class="form-field">
+          <label for="rejectionReasonInput">Rejection Reason *</label>
+          <textarea
+            id="rejectionReasonInput"
+            rows="3"
+            [(ngModel)]="rejectionReasonInput"
+            name="rejectionReasonInput"
+            placeholder="Reason..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeRejectModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-danger"
+            (click)="submitReject()"
+            [disabled]="submittingRejection || !rejectionReasonInput.trim()"
+          >
+            {{ submittingRejection ? 'Rejecting...' : 'Confirm Rejection' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

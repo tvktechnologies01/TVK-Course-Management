@@ -1,0 +1,49 @@
+{
+  "name": "recruitment-crm-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "seed:manager": "tsx scripts/seed-manager.ts",
+    "update:manager": "tsx scripts/seed-manager.ts",
+    "check:scripts": "tsc --noEmit -p tsconfig.scripts.json"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.0",
+    "@types/ssh2": "^1.15.6",
+    "bcryptjs": "^3.0.2",
+    "connect-mongo": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.12.1",
+    "multer": "^2.0.2",
+    "nodemailer": "^10.1.7",
+    "ssh2": "^1.17.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.1",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.17.19",
+    "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.1.0",
+    "tsx": "^4.19.3",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

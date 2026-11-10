@@ -1,0 +1,130 @@
+<div class="login-page">
+  <div class="login-card">
+    <!-- TVK Technologies Branding -->
+    <header class="brand-header">
+      <div class="brand-mark">TVK</div>
+      <div class="brand-title">
+        <h1>TVK Technologies</h1>
+        <p>Trainer Portal &amp; Faculty System</p>
+      </div>
+    </header>
+
+    <div class="form-container">
+      <h2>Trainer Sign In</h2>
+      <p class="subtitle">Access your assigned batches, mark student attendance, track curriculum topics, and evaluate student readiness.</p>
+
+      <div *ngIf="errorMessage" class="alert-box error" role="alert">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="successMessage" class="alert-box success" role="alert">
+        {{ successMessage }}
+      </div>
+
+      <form (ngSubmit)="login()" class="auth-form">
+        <div class="form-group">
+          <label for="identifier">Trainer ID or Registered Email *</label>
+          <input
+            id="identifier"
+            type="text"
+            [(ngModel)]="identifier"
+            name="identifier"
+            placeholder="e.g. TVK-TR-00001 or trainer@tvk.com"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password *</label>
+          <div class="password-input-wrapper">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Enter your trainer password"
+              autocomplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              class="btn-toggle-pw"
+              (click)="togglePasswordVisibility()"
+              [title]="showPassword ? 'Hide password' : 'Show password'"
+              aria-label="Toggle password visibility"
+            >
+              {{ showPassword ? '👁' : '👁‍🗨' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="credentials-notice">
+          <span class="notice-icon">ℹ️</span>
+          <span>
+            Initial login credentials are provided by your Manager (Default: <code>TVK@Trainer2026</code>). You will be prompted to update your password on first sign-in.
+          </span>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="loggingIn">
+          <span *ngIf="loggingIn" class="btn-spinner"></span>
+          {{ loggingIn ? 'Signing in to Faculty Portal...' : 'Sign In to Trainer Portal' }}
+        </button>
+      </form>
+
+      <div class="portal-extra-links">
+        <p>Looking for a different portal?</p>
+        <div class="links-row">
+          <a routerLink="/candidate-login" class="sub-link">🎓 Candidate Portal &rarr;</a>
+          <a routerLink="/login" class="sub-link">💼 Staff / HR Portal &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- First Time Password Change Modal -->
+  <div *ngIf="showPasswordChangeModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <h3>🔒 Security Update Required</h3>
+        <p class="modal-sub">This is your first login. Please choose a new secure password for your trainer account.</p>
+      </header>
+
+      <div *ngIf="passwordChangeError" class="alert-box error">
+        {{ passwordChangeError }}
+      </div>
+
+      <form (ngSubmit)="submitNewPassword()" class="modal-body auth-form">
+        <div class="form-group">
+          <label for="newPassword">New Password (at least 6 characters) *</label>
+          <input
+            id="newPassword"
+            type="password"
+            [(ngModel)]="newPassword"
+            name="newPassword"
+            required
+            placeholder="Enter new password"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="confirmNewPassword">Confirm New Password *</label>
+          <input
+            id="confirmNewPassword"
+            type="password"
+            [(ngModel)]="confirmNewPassword"
+            name="confirmNewPassword"
+            required
+            placeholder="Confirm new password"
+          />
+        </div>
+
+        <footer class="modal-footer">
+          <button type="submit" class="btn-primary" [disabled]="passwordChangeSaving">
+            {{ passwordChangeSaving ? 'Updating Password...' : 'Save Password & Enter Portal' }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+</div>

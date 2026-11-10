@@ -1,0 +1,237 @@
+<div class="payment-public-page">
+  <div class="payment-container">
+    <!-- Header Branding -->
+    <header class="payment-header">
+      <div class="brand-logo">
+        <span class="logo-mark">TVK</span>
+        <div class="brand-text">
+          <h1>TVK Technologies</h1>
+          <p>Institute of Advanced IT Training &amp; Professional Certification</p>
+        </div>
+      </div>
+      <div class="badge-secure">
+        <span class="secure-icon">🔒</span>
+        <span>Secure Candidate Payment Portal</span>
+      </div>
+    </header>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="state-card" role="status">
+      <div class="spinner"></div>
+      <p>Loading course enrollment and payment details...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="!loading && errorMessage && !paymentInfo" class="alert-box error" role="alert">
+      <span class="alert-icon">⚠</span>
+      <div>
+        <h3>Payment Link Unavailable</h3>
+        <p>{{ errorMessage }}</p>
+      </div>
+    </div>
+
+    <!-- Content When Loaded -->
+    <div *ngIf="!loading && paymentInfo" class="payment-content">
+      <!-- Welcome & Instructions Banner -->
+      <section class="candidate-summary-card">
+        <div class="candidate-meta">
+          <span class="eyebrow">ENROLLMENT INVOICE</span>
+          <h2>Candidate: <strong>{{ paymentInfo.candidateName }}</strong></h2>
+          <div class="course-meta-tags">
+            <span class="meta-tag">📚 {{ paymentInfo.courseName }}</span>
+            <span class="meta-tag">⏱ {{ paymentInfo.courseDuration }}</span>
+            <span *ngIf="paymentInfo.courseStartDate" class="meta-tag">📅 Starts: {{ paymentInfo.courseStartDate | date:'mediumDate' }}</span>
+          </div>
+        </div>
+
+        <div class="status-indicator">
+          <span class="badge-status" [ngClass]="paymentInfo.paymentStatus.toLowerCase().replace(' ', '-')">
+            {{ paymentInfo.paymentStatus }}
+          </span>
+        </div>
+      </section>
+
+      <!-- Fee Breakdown -->
+      <section class="fee-cards-grid">
+        <div class="fee-card">
+          <span class="fee-label">Total Course Fee</span>
+          <span class="fee-amount">₹{{ paymentInfo.totalFee | number }}</span>
+        </div>
+        <div class="fee-card success">
+          <span class="fee-label">Verified Amount Paid</span>
+          <span class="fee-amount">₹{{ paymentInfo.amountPaid | number }}</span>
+        </div>
+        <div class="fee-card highlight">
+          <span class="fee-label">Remaining Balance Due</span>
+          <span class="fee-amount" [class.paid-zero]="paymentInfo.balance === 0">
+            ₹{{ paymentInfo.balance | number }}
+          </span>
+        </div>
+      </section>
+
+      <!-- Alert Messages -->
+      <div *ngIf="successMessage" class="alert-box success" role="alert">
+        <span class="alert-icon">✓</span>
+        <div>
+          <h4>Submission Successful</h4>
+          <p>{{ successMessage }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage && paymentInfo" class="alert-box error" role="alert">
+        <span class="alert-icon">⚠</span>
+        <div>
+          <p>{{ errorMessage }}</p>
+        </div>
+      </div>
+
+      <!-- Main Payment & QR Section -->
+      <div class="payment-split-grid">
+        <!-- Left: Official QR Code & Instructions -->
+        <div class="qr-section-card">
+          <h3>1. Official TVK Payment QR Code</h3>
+          <p class="section-desc">
+            Scan this official QR code using any UPI app (Google Pay, PhonePe, Paytm, BHIM) or banking app to complete your payment.
+          </p>
+
+          <div class="qr-display-box">
+            <div *ngIf="paymentInfo.paymentQrCode" class="qr-frame">
+              <img [src]="paymentInfo.paymentQrCode" alt="TVK Technologies Payment QR Code" class="qr-img" />
+              <span class="scan-tag">Scan to Pay</span>
+            </div>
+            <div *ngIf="!paymentInfo.paymentQrCode" class="qr-placeholder">
+              <span class="qr-icon">📱</span>
+              <p>QR code is being updated by administration.</p>
+              <p class="sub-hint">Please refer to the payment instructions below or contact TVK support.</p>
+            </div>
+          </div>
+
+          <div class="instructions-box" *ngIf="paymentInfo.paymentInstructions">
+            <h4>Instructions &amp; Bank Details:</h4>
+            <p>{{ paymentInfo.paymentInstructions }}</p>
+          </div>
+        </div>
+
+        <!-- Right: Submit Payment Proof Form -->
+        <div class="submission-section-card">
+          <h3>2. Submit Payment Details</h3>
+          <p class="section-desc">
+            After completing your transfer, enter your transaction reference number and upload the screenshot/receipt.
+          </p>
+
+          <div *ngIf="paymentInfo.balance === 0 && paymentInfo.amountPaid > 0" class="paid-congrats">
+            <span class="check-icon">✓</span>
+            <h4>Course Fee Fully Paid</h4>
+            <p>Your enrollment fee has been completely settled and verified. Your HR representative will assist you with portal access credentials.</p>
+          </div>
+
+          <form *ngIf="paymentInfo.balance > 0 || paymentInfo.totalFee === 0" (ngSubmit)="submitPayment()" class="payment-form">
+            <div class="form-group">
+              <label for="amountToPay">Amount Transferred (₹) *</label>
+              <input
+                id="amountToPay"
+                type="number"
+                min="1"
+                [(ngModel)]="amountToPay"
+                name="amountToPay"
+                required
+              />
+              <span class="field-hint">Pre-filled with current balance due. You may enter an installment amount if approved.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="transactionRef">Transaction Reference / UTR Number *</label>
+              <input
+                id="transactionRef"
+                type="text"
+                [(ngModel)]="transactionRef"
+                name="transactionRef"
+                placeholder="e.g. UPI-123456789012 or IMPS/NEFT Ref"
+                required
+              />
+              <span class="field-hint">Find this in your payment app's transaction history.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="proofFile">Upload Payment Proof (Screenshot / Slip) *</label>
+              <input
+                id="proofFile"
+                type="file"
+                accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+                (change)="onFileSelected($event)"
+                class="file-input"
+                required
+              />
+              <span class="field-hint">Supported formats: PNG, JPG, PDF (max 2 MB).</span>
+              <span *ngIf="fileError" class="field-error">{{ fileError }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="notes">Notes / Additional Info (Optional)</label>
+              <textarea
+                id="notes"
+                rows="2"
+                [(ngModel)]="notes"
+                name="notes"
+                placeholder="e.g. Paid via Google Pay from account holder: John Doe"
+              ></textarea>
+            </div>
+
+            <button
+              type="submit"
+              class="btn-submit-payment"
+              [disabled]="submitting || !transactionRef.trim() || !selectedFile"
+            >
+              <span *ngIf="submitting" class="button-spinner"></span>
+              {{ submitting ? 'Submitting Payment Proof...' : 'Submit Payment for Verification' }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Recent Payment Submissions History -->
+      <section *ngIf="paymentInfo.recentPayments && paymentInfo.recentPayments.length > 0" class="history-section">
+        <h3>Payment Submissions &amp; Verification Status</h3>
+        <div class="history-table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Transaction Reference</th>
+                <th>Verification Status</th>
+                <th>Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of paymentInfo.recentPayments">
+                <td>{{ p.paidAt | date:'mediumDate' }}</td>
+                <td><strong>₹{{ p.amount | number }}</strong></td>
+                <td><code>{{ p.transactionRef }}</code></td>
+                <td>
+                  <span class="badge-status" [ngClass]="p.status.toLowerCase().replace(' ', '-')">
+                    {{ p.status }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="p.status === 'Verified' && p.receiptNumber" class="receipt-tag">
+                    ✓ Receipt: {{ p.receiptNumber }}
+                  </span>
+                  <span *ngIf="p.status !== 'Verified'" class="text-muted">
+                    Pending Verification
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="payment-footer">
+      <p>TVK Technologies • Official Admissions &amp; Training Operations</p>
+      <p class="footer-sub">For questions or support, contact: <strong>admissions@tvktechnologies.com</strong></p>
+    </footer>
+  </div>
+</div>

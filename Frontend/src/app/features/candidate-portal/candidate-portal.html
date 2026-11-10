@@ -1,0 +1,840 @@
+<div class="candidate-portal-layout">
+  <!-- Mobile Sidebar Backdrop -->
+  <div
+    *ngIf="mobileMenuOpen"
+    class="sidebar-backdrop"
+    (click)="closeMobileMenu()"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Left Sidebar Dashboard -->
+  <aside class="portal-sidebar" [class.mobile-open]="mobileMenuOpen">
+    <!-- Brand / Logo Header -->
+    <div class="sidebar-brand">
+      <div class="brand-badge">TVK</div>
+      <div class="brand-titles">
+        <strong class="brand-company">TVK Technologies</strong>
+        <span class="brand-subtitle">Candidate Portal</span>
+      </div>
+      <button
+        type="button"
+        class="mobile-close-btn"
+        (click)="closeMobileMenu()"
+        aria-label="Close menu"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Candidate Mini Profile Card in Sidebar -->
+    <div *ngIf="candidate" class="sidebar-candidate-card">
+      <div class="sidebar-avatar">{{ (candidate.name || 'C').charAt(0).toUpperCase() }}</div>
+      <div class="sidebar-candidate-info">
+        <span class="sidebar-candidate-name" [title]="candidate.name">{{ candidate.name }}</span>
+        <span class="sidebar-candidate-id">ID: {{ candidate.id }}</span>
+      </div>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="sidebar-nav" aria-label="Candidate Portal Navigation">
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="activeTab === 'DETAILS'"
+        (click)="switchTab('DETAILS')"
+      >
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </span>
+        <span class="nav-label">My Details</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="activeTab === 'COURSE'"
+        (click)="switchTab('COURSE')"
+      >
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+        </span>
+        <span class="nav-label">My Course &amp; Tasks</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="activeTab === 'PAYMENTS'"
+        (click)="switchTab('PAYMENTS')"
+      >
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+          </svg>
+        </span>
+        <span class="nav-label">My Payments &amp; Receipts</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        [class.active]="activeTab === 'CERTIFICATE'"
+        (click)="switchTab('CERTIFICATE')"
+      >
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="7"></circle>
+            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+          </svg>
+        </span>
+        <span class="nav-label">My Certificate</span>
+      </button>
+    </nav>
+
+    <!-- Sidebar Footer with Sign Out -->
+    <div class="sidebar-footer">
+      <button
+        type="button"
+        class="btn-sidebar-logout"
+        (click)="logout()"
+        title="Sign out of portal"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Right Main Area -->
+  <div class="portal-main-area">
+    <!-- Topbar Header -->
+    <header class="portal-topbar">
+      <div class="topbar-left">
+        <button
+          type="button"
+          class="mobile-menu-toggle"
+          (click)="toggleMobileMenu()"
+          aria-label="Toggle navigation menu"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="topbar-title-block">
+          <h1 class="topbar-heading">
+            <span *ngIf="activeTab === 'DETAILS'">My Profile &amp; Registration</span>
+            <span *ngIf="activeTab === 'COURSE'">My Course Curriculum &amp; Tasks</span>
+            <span *ngIf="activeTab === 'PAYMENTS'">Fee Payments &amp; Receipts</span>
+            <span *ngIf="activeTab === 'CERTIFICATE'">Course Completion &amp; Certificate</span>
+          </h1>
+          <p class="topbar-sub">TVK Technologies Candidate Dashboard</p>
+        </div>
+      </div>
+
+      <div *ngIf="candidate" class="topbar-right">
+        <div class="topbar-user-badge">
+          <div class="badge-avatar">{{ (candidate.name || 'C').charAt(0).toUpperCase() }}</div>
+          <div class="badge-text">
+            <span class="badge-name">{{ candidate.name }}</span>
+            <span class="badge-id">ID: {{ candidate.id }}</span>
+          </div>
+        </div>
+
+        <button type="button" class="btn-topbar-logout" (click)="logout()" title="Sign out of portal">
+          <span>Sign Out</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="portal-main-content">
+      <!-- Loading State -->
+      <div *ngIf="loadingDetails" class="state-card" role="status">
+        <div class="spinner"></div>
+        <p>Loading your profile and course details...</p>
+      </div>
+
+      <!-- Main Content Sections -->
+      <div *ngIf="!loadingDetails && candidate">
+        <!-- Notifications -->
+        <div *ngIf="actionSuccess" class="alert-box success" role="alert">
+          ✓ {{ actionSuccess }}
+        </div>
+        <div *ngIf="actionError" class="alert-box error" role="alert">
+          ⚠ {{ actionError }}
+        </div>
+
+    <!-- SECTION A: My Details -->
+    <section *ngIf="activeTab === 'DETAILS'" class="portal-section">
+      <div class="section-header-row">
+        <div>
+          <h2>Candidate Profile Details</h2>
+          <p class="section-sub">Your registration and enrollment information recorded with TVK Technologies.</p>
+        </div>
+        <button type="button" class="btn-secondary" (click)="openCorrectionModal()">
+          ✎ Request Correction
+        </button>
+      </div>
+
+      <div class="details-grid">
+        <div class="card-panel">
+          <h3>Personal Information</h3>
+          <div class="info-list">
+            <div class="info-row">
+              <span class="label">Candidate ID</span>
+              <span class="val bold">{{ candidate.id }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Full Name</span>
+              <span class="val">{{ candidate.name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Email Address</span>
+              <span class="val">{{ candidate.email }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Phone Number</span>
+              <span class="val">{{ candidate.phone }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Date of Birth</span>
+              <span class="val">{{ candidate.dateOfBirth || 'Not provided' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Location / City</span>
+              <span class="val">{{ candidate.location || 'Not provided' }}</span>
+            </div>
+            <div class="info-row full-w">
+              <span class="label">Residential Address</span>
+              <span class="val">{{ candidate.address || 'Not provided' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-panel">
+          <h3>Education &amp; Academic Qualifications</h3>
+          <div class="info-list">
+            <div class="info-row">
+              <span class="label">Degree / Qualification</span>
+              <span class="val">{{ candidate.degree || 'Not provided' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">College / Institute</span>
+              <span class="val">{{ candidate.college || 'Not provided' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Year of Passing</span>
+              <span class="val">{{ candidate.yearOfPassing || 'Not provided' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Primary Track / Stack</span>
+              <span class="val bold">{{ candidate.courseName || candidate.programmingLanguage || candidate.position }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Registered Track</span>
+              <span class="val">{{ candidate.lookingFor || 'Training' }}</span>
+            </div>
+            <div class="info-row" *ngIf="candidate.resumeFileId">
+              <span class="label">Resume Document</span>
+              <button
+                type="button"
+                class="btn-download-link"
+                (click)="downloadResume()"
+                [disabled]="downloadingResume"
+                title="Download your uploaded resume"
+              >
+                📄 {{ downloadingResume ? 'Downloading...' : (candidate.resumeName || 'Download Uploaded Resume') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Training Selections -->
+      <div *ngIf="candidate.additionalTraining && candidate.additionalTraining.length > 0" class="card-panel mt-1">
+        <h3>Additional Training Modules Selected</h3>
+        <div class="chips-container">
+          <span *ngFor="let tr of candidate.additionalTraining" class="chip">
+            ✓ {{ tr }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Correction Requests Audit -->
+      <div *ngIf="candidate.correctionRequests && candidate.correctionRequests.length > 0" class="card-panel mt-1">
+        <h3>Submitted Correction Requests</h3>
+        <div class="history-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Submitted Date</th>
+                <th>Requested Changes</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let req of candidate.correctionRequests">
+                <td>{{ req.requestedAt | date:'medium' }}</td>
+                <td>{{ req.requestText }}</td>
+                <td>
+                  <span class="badge-status" [ngClass]="req.status.toLowerCase()">
+                    {{ req.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION B: My Course & Tasks -->
+    <section *ngIf="activeTab === 'COURSE'" class="portal-section">
+      <div class="section-header-row">
+        <div>
+          <h2>Course Schedule &amp; Academic Tasks</h2>
+          <p class="section-sub">Official training schedule and curriculum tasks assigned by your instructor.</p>
+        </div>
+        <div class="course-status-badge">
+          <span class="badge-status" [ngClass]="candidate.courseCompleted ? 'verified' : 'pending'">
+            {{ candidate.courseCompleted ? 'Course Completed' : 'In Progress' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Course Schedule Summary -->
+      <div class="course-overview-grid">
+        <div class="metric-card">
+          <span class="metric-label">Course Title</span>
+          <span class="metric-val">{{ candidate.courseName || candidate.programmingLanguage || candidate.position || 'Professional IT Training' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Training Mode</span>
+          <span class="metric-val">{{ candidate.modeOfCourse || 'Online Interactive' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Course Duration</span>
+          <span class="metric-val">{{ candidate.courseDuration || '3 Months' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Course Start Date</span>
+          <span class="metric-val">
+            {{ (candidate.courseStartDate || candidate.courseDate) ? ((candidate.courseStartDate || candidate.courseDate) | date:'mediumDate') : 'To be assigned by HR' }}
+          </span>
+        </div>
+        <div class="metric-card" *ngIf="candidate.joiningDate">
+          <span class="metric-label">Joining Date</span>
+          <span class="metric-val">{{ candidate.joiningDate | date:'mediumDate' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Assigned Instructor</span>
+          <span class="metric-val">{{ candidate.trainerName || 'Pending Trainer Allocation' }}</span>
+          <small class="text-muted" style="display:block; font-size:0.75rem; margin-top:2px;" *ngIf="candidate.trainerEmail">✉ {{ candidate.trainerEmail }}</small>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Trainer Assignment Status</span>
+          <span class="metric-val" [style.color]="candidate.trainerName ? '#16a34a' : '#d97706'">
+            {{ candidate.trainerAllocationStatus || (candidate.trainerName ? 'Assigned' : 'Pending Trainer Allocation') }}
+          </span>
+        </div>
+        <div class="metric-card" *ngIf="candidate.trainerName">
+          <span class="metric-label">Instructor Review</span>
+          <button type="button" class="btn-secondary" (click)="openFeedbackModal()" style="margin-top: 0.35rem; padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+            ⭐ Rate Instructor
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Cohort & Training Session Schedule -->
+      <div *ngIf="activeBatch" class="card-panel mt-1">
+        <div class="panel-head-flex">
+          <div>
+            <h3>Live Batch Schedule: {{ activeBatch.batchName }}</h3>
+            <p class="panel-sub">Interactive classroom sessions and live cohort meeting details.</p>
+          </div>
+          <a *ngIf="activeBatch.meetingLink" [href]="activeBatch.meetingLink" target="_blank" rel="noopener noreferrer" class="btn-primary" style="text-decoration: none;">
+            🎥 Join Live Session
+          </a>
+        </div>
+        <div class="course-overview-grid mt-1">
+          <div class="metric-card">
+            <span class="metric-label">Time Slot</span>
+            <span class="metric-val bold">{{ activeBatch.timeSlot }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Class Days</span>
+            <span class="metric-val">{{ activeBatch.days ? activeBatch.days.join(', ') : 'Mon - Fri' }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Classroom / Location</span>
+            <span class="metric-val">{{ activeBatch.classroomLocation || 'Online Virtual Lab' }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Batch Duration</span>
+            <span class="metric-val">{{ activeBatch.startDate | date:'mediumDate' }} to {{ activeBatch.endDate ? (activeBatch.endDate | date:'mediumDate') : 'Ongoing' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course Curriculum Document Panel -->
+      <div class="card-panel mt-1 curriculum-panel">
+        <div class="panel-head-flex">
+          <div>
+            <h3>Official Course Curriculum</h3>
+            <p class="panel-sub">Syllabus and training module outline published for your enrolled track.</p>
+          </div>
+          <div *ngIf="curriculumInfo?.available">
+            <span class="badge-status verified">✓ Curriculum Available</span>
+          </div>
+        </div>
+
+        <div *ngIf="loadingCurriculum" class="curriculum-loading">
+          <div class="spinner-small"></div>
+          <span>Checking course curriculum...</span>
+        </div>
+
+        <div *ngIf="!loadingCurriculum && curriculumInfo?.available" class="curriculum-card">
+          <div class="curriculum-meta-left">
+            <div class="file-icon-box">
+              <span class="file-type-icon">📚</span>
+            </div>
+            <div class="file-details">
+              <div class="file-title-row">
+                <span class="file-name">{{ curriculumInfo?.curriculumFileName }}</span>
+                <span class="file-badge">{{ curriculumInfo?.curriculumFileType?.toUpperCase() || 'DOCUMENT' }}</span>
+                <span class="file-badge duration-badge" *ngIf="curriculumInfo?.duration">{{ curriculumInfo?.duration }}</span>
+              </div>
+              <div class="file-sub-info">
+                <span>Course: <strong>{{ curriculumInfo?.courseName }}</strong></span>
+                <span *ngIf="curriculumInfo?.duration"> • Duration: <strong>{{ curriculumInfo?.duration }}</strong></span>
+                <span *ngIf="curriculumInfo?.curriculumFileSize"> • Size: {{ formatCurriculumSize(curriculumInfo?.curriculumFileSize) }}</span>
+                <span *ngIf="curriculumInfo?.curriculumUploadedAt"> • Uploaded: {{ curriculumInfo?.curriculumUploadedAt | date:'mediumDate' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="curriculum-actions">
+            <button
+              type="button"
+              class="btn-primary btn-download-curriculum"
+              (click)="downloadCurriculum()"
+              [disabled]="downloadingCurriculum"
+            >
+              <span *ngIf="!downloadingCurriculum">⬇ Download Curriculum</span>
+              <span *ngIf="downloadingCurriculum">⏳ Downloading...</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="!loadingCurriculum && (!curriculumInfo || !curriculumInfo.available)" class="empty-hint">
+          <span class="empty-icon">📖</span>
+          <p>Curriculum syllabus for <strong>{{ candidate.courseName || candidate.programmingLanguage || candidate.position || 'this course' }}</strong> is currently being prepared by the training department and will be available for download here once uploaded.</p>
+        </div>
+      </div>
+
+      <!-- Assigned Tasks / Projects -->
+      <div class="card-panel mt-1">
+        <h3>Assigned Curriculum Tasks &amp; Projects</h3>
+        <div *ngIf="!candidate.assignedTasks || candidate.assignedTasks.length === 0" class="empty-hint">
+          <span class="empty-icon">📋</span>
+          <p>No individual project tasks currently assigned. Projects will be assigned as your training curriculum progresses.</p>
+        </div>
+
+        <div *ngIf="candidate.assignedTasks && candidate.assignedTasks.length > 0" class="tasks-list">
+          <div *ngFor="let task of candidate.assignedTasks" class="task-card">
+            <div class="task-header">
+              <h4>{{ task.title }}</h4>
+              <span class="badge-status" [ngClass]="getTaskStatusClass(task.status)">
+                {{ task.status }}
+              </span>
+            </div>
+            <p *ngIf="task.description" class="task-desc">{{ task.description }}</p>
+            <span *ngIf="task.dueDate" class="task-due">Due Date: {{ task.dueDate | date:'mediumDate' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION C: My Payments & Receipts -->
+    <section *ngIf="activeTab === 'PAYMENTS'" class="portal-section">
+      <div class="section-header-row">
+        <div>
+          <h2>Enrollment Fee &amp; Payment Receipts</h2>
+          <p class="section-sub">Track verified installments, download official payment receipts, and submit pending fee payments.</p>
+        </div>
+        <button
+          *ngIf="(candidate.balance ?? 0) > 0"
+          type="button"
+          class="btn-primary"
+          (click)="openPaymentModal()"
+        >
+          💳 Pay Remaining Balance
+        </button>
+      </div>
+
+      <!-- Financial Metric Cards -->
+      <div class="fee-cards-grid">
+        <div class="fee-card">
+          <span class="fee-label">Total Course Fee</span>
+          <span class="fee-amount">₹{{ (candidate.totalFee || 0) | number }}</span>
+        </div>
+        <div class="fee-card success">
+          <span class="fee-label">Verified Amount Received</span>
+          <span class="fee-amount">₹{{ (candidate.amountPaid || 0) | number }}</span>
+        </div>
+        <div class="fee-card highlight">
+          <span class="fee-label">Remaining Balance Due</span>
+          <span class="fee-amount" [class.paid-zero]="(candidate.balance ?? 0) === 0">
+            ₹{{ (candidate.balance ?? 0) | number }}
+          </span>
+        </div>
+        <div class="fee-card">
+          <span class="fee-label">Overall Payment Status</span>
+          <span class="badge-status mt-05" [ngClass]="(candidate.paymentStatus || 'Pending').toLowerCase().replace(' ', '-')">
+            {{ candidate.paymentStatus || 'Pending' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Payment QR & Bank Instructions (if balance remains) -->
+      <div *ngIf="(candidate.balance ?? 0) > 0" class="card-panel qr-instructions-split">
+        <div class="qr-col">
+          <h3>Official TVK Payment QR Code</h3>
+          <div *ngIf="candidate.paymentQrCode" class="qr-box">
+            <img [src]="candidate.paymentQrCode" alt="Payment QR Code" class="qr-thumb" />
+            <span class="qr-caption">Scan with UPI App to Pay</span>
+          </div>
+          <div *ngIf="!candidate.paymentQrCode" class="qr-missing">
+            <p>Payment QR code is currently being configured by admissions.</p>
+          </div>
+        </div>
+
+        <div class="instructions-col">
+          <h3>Payment Instructions</h3>
+          <p class="inst-text">{{ candidate.paymentInstructions || 'Please scan the official QR code to transfer your remaining balance and submit the payment proof below.' }}</p>
+          <button type="button" class="btn-primary mt-1" (click)="openPaymentModal()">
+            Submit Transfer Proof
+          </button>
+        </div>
+      </div>
+
+      <!-- Verified Payment History & Official Receipts -->
+      <div class="card-panel mt-1">
+        <h3>Payment History &amp; Official Receipts</h3>
+        <div *ngIf="!candidate.payments || candidate.payments.length === 0" class="empty-hint">
+          <span class="empty-icon">🧾</span>
+          <p>No payment records found. Submitted payment proofs will appear here once verified by HR.</p>
+        </div>
+
+        <div *ngIf="candidate.payments && candidate.payments.length > 0" class="history-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Payment Date</th>
+                <th>Verified Amount</th>
+                <th>Transaction Reference</th>
+                <th>Status</th>
+                <th>Official Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of candidate.payments">
+                <td>{{ p.paidAt | date:'mediumDate' }}</td>
+                <td><strong>₹{{ p.amount | number }}</strong></td>
+                <td><code>{{ p.transactionRef }}</code></td>
+                <td>
+                  <span class="badge-status" [ngClass]="p.status.toLowerCase().replace(' ', '-')">
+                    {{ p.status }}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    *ngIf="p.status === 'Verified' && p.receiptNumber"
+                    type="button"
+                    class="btn-download-receipt"
+                    (click)="downloadReceipt(p.receiptNumber)"
+                    [disabled]="downloadingReceiptNum === p.receiptNumber"
+                  >
+                    {{ downloadingReceiptNum === p.receiptNumber ? 'Generating PDF...' : '⬇ Download Official Receipt (' + p.receiptNumber + ')' }}
+                  </button>
+                  <span *ngIf="p.status !== 'Verified'" class="text-muted">
+                    Available upon verification
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION D: My Certificate -->
+    <section *ngIf="activeTab === 'CERTIFICATE'" class="portal-section">
+      <div class="section-header-row">
+        <div>
+          <h2>Course Completion Certificate</h2>
+          <p class="section-sub">Official credential certifying your successful curriculum completion at TVK Technologies.</p>
+        </div>
+      </div>
+
+      <!-- If Certificate Issued -->
+      <div *ngIf="candidate.certificateStatus === 'ISSUED'" class="cert-issued-card">
+        <div class="cert-badge-ribbon">
+          <span class="ribbon-icon">🏆</span>
+          <h3>Verified &amp; Issued Certificate</h3>
+          <p>Certificate ID: <strong>{{ candidate.certificateId }}</strong></p>
+        </div>
+
+        <div class="cert-meta-grid">
+          <div>
+            <span class="c-label">Candidate Name</span>
+            <span class="c-val">{{ candidate.name }}</span>
+          </div>
+          <div>
+            <span class="c-label">Course Title</span>
+            <span class="c-val">{{ candidate.courseName || candidate.programmingLanguage || candidate.position }}</span>
+          </div>
+          <div>
+            <span class="c-label">Completion Date</span>
+            <span class="c-val">{{ candidate.completionDate | date:'mediumDate' }}</span>
+          </div>
+          <div>
+            <span class="c-label">Date of Issue</span>
+            <span class="c-val">{{ (candidate.certificateIssuedAt || candidate.updatedAt) | date:'mediumDate' }}</span>
+          </div>
+        </div>
+
+        <div class="cert-actions">
+          <button type="button" class="btn-secondary" (click)="previewCertificate()" [disabled]="previewingCert">
+            {{ previewingCert ? 'Loading Preview...' : '👁 Preview Certificate' }}
+          </button>
+          <button type="button" class="btn-primary" (click)="downloadCertificate()" [disabled]="downloadingCert">
+            {{ downloadingCert ? 'Downloading...' : '⬇ Download Certificate' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- If Certificate Revoked -->
+      <div *ngIf="candidate.certificateStatus === 'REVOKED'" class="cert-pending-card" style="background: #fef2f2; border-color: #fecaca;">
+        <span class="pending-icon" style="background: #fee2e2; color: #dc2626;">⚠️</span>
+        <h3 style="color: #991b1b;">Certificate Revoked</h3>
+        <p style="color: #475569;">
+          This certificate (ID: <strong>{{ candidate.certificateId }}</strong>) has been officially revoked by administrative authority.
+        </p>
+        <p *ngIf="candidate.certificateRevocationReason" style="color: #b91c1c; font-size: 14px; margin-top: 8px;">
+          <strong>Reason:</strong> {{ candidate.certificateRevocationReason }}
+        </p>
+      </div>
+
+      <!-- If Certificate Not Issued Yet -->
+      <div *ngIf="!candidate.certificateStatus || candidate.certificateStatus === 'NOT_ISSUED'" class="cert-pending-card">
+        <span class="pending-icon">⏳</span>
+        <h3>Certificate Not Yet Issued</h3>
+        <p *ngIf="!candidate.courseCompleted">
+          Your certificate will become available for preview and download once you successfully complete your training curriculum and HR marks your course as completed.
+        </p>
+        <p *ngIf="candidate.courseCompleted">
+          Your course has been marked as completed! Administration is currently preparing your official certificate.
+        </p>
+      </div>
+
+      <!-- Certificate Preview Modal -->
+      <div *ngIf="previewPdfUrl" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal-card pdf-preview-card">
+          <header class="modal-header">
+            <h3>Certificate Preview</h3>
+            <button type="button" class="btn-close-modal" (click)="closePreview()">×</button>
+          </header>
+          <div class="pdf-frame-wrapper" style="text-align: center; background: #1e293b; padding: 12px; border-radius: 6px; overflow: auto; max-height: 75vh;">
+            <img
+              [src]="previewPdfUrl"
+              alt="Certificate Preview"
+              style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: inline-block;"
+            />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="closePreview()">Close Preview</button>
+            <button type="button" class="btn-primary" (click)="downloadCertificate()">Download Certificate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Request Correction Modal -->
+  <div *ngIf="showCorrectionModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Request Profile Correction</h3>
+          <p>Describe any information that needs updating or correction by HR administration.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeCorrectionModal()">×</button>
+      </header>
+
+      <form (ngSubmit)="submitCorrection()" class="modal-form">
+        <div class="form-group">
+          <label for="correctionText">Correction Details &amp; Notes *</label>
+          <textarea
+            id="correctionText"
+            rows="4"
+            [(ngModel)]="correctionText"
+            name="correctionText"
+            placeholder="e.g. Please update my residential address to: Flat 402, Green Park..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeCorrectionModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="submittingCorrection || !correctionText.trim()">
+            {{ submittingCorrection ? 'Submitting...' : 'Submit Request' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Submit Payment Proof Modal -->
+  <div *ngIf="showPaymentModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Submit Fee Payment Proof</h3>
+          <p>Upload your transfer receipt or screenshot for HR verification.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closePaymentModal()">×</button>
+      </header>
+
+      <form (ngSubmit)="submitPaymentProof()" class="modal-form">
+        <div class="form-group">
+          <label for="payAmount">Amount Paid (₹) *</label>
+          <input
+            id="payAmount"
+            type="number"
+            min="1"
+            [(ngModel)]="payAmount"
+            name="payAmount"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="payTransactionRef">Transaction Reference / UTR Number *</label>
+          <input
+            id="payTransactionRef"
+            type="text"
+            [(ngModel)]="payTransactionRef"
+            name="payTransactionRef"
+            placeholder="e.g. UPI-123456789012"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="payProofFile">Upload Payment Proof (PNG, JPG, PDF) *</label>
+          <input
+            id="payProofFile"
+            type="file"
+            accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+            (change)="onProofFileSelected($event)"
+            required
+          />
+          <span *ngIf="paymentFileError" class="field-error">{{ paymentFileError }}</span>
+        </div>
+
+        <div class="form-group">
+          <label for="payNotes">Notes (Optional)</label>
+          <input
+            id="payNotes"
+            type="text"
+            [(ngModel)]="payNotes"
+            name="payNotes"
+            placeholder="e.g. Paid via Google Pay"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closePaymentModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="submittingPayment || !payTransactionRef.trim() || !payProofFile">
+            {{ submittingPayment ? 'Submitting...' : 'Submit for Verification' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: RATE INSTRUCTOR / STUDENT FEEDBACK -->
+  <!-- ======================================================== -->
+  <div *ngIf="showFeedbackModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Rate Your Instructor</h3>
+          <p>Share your review of instructor <strong>{{ candidate?.trainerName }}</strong>.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeFeedbackModal()">×</button>
+      </header>
+
+      <form (ngSubmit)="submitTrainerFeedback()" class="modal-form">
+        <div class="form-group">
+          <label>Overall Rating *</label>
+          <div class="star-rating-row" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem;">
+            <button
+              type="button"
+              *ngFor="let s of [1, 2, 3, 4, 5]"
+              (click)="setFeedbackRating(s)"
+              style="background:none; border:none; font-size:1.75rem; cursor:pointer; padding:0; line-height:1;"
+              [style.color]="s <= feedbackRating ? '#eab308' : '#cbd5e1'"
+            >
+              ★
+            </button>
+            <span style="font-size:0.9rem; font-weight:600; color:#475569; margin-left:0.5rem;">
+              {{ feedbackRating }} of 5 Stars
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fb-comment">Comments &amp; Experience Review</label>
+          <textarea
+            id="fb-comment"
+            [(ngModel)]="feedbackComment"
+            name="feedbackComment"
+            rows="3"
+            placeholder="Share feedback on curriculum delivery, practical exercises, mentorship..."
+            style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:0.5rem; font-family:inherit;"
+          ></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeFeedbackModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="submittingFeedback">
+            {{ submittingFeedback ? 'Submitting...' : 'Submit Review' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

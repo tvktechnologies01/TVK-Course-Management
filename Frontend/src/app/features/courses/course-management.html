@@ -1,0 +1,920 @@
+<div class="course-management-container">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="header-titles">
+      <div class="title-with-pill">
+        <h1>Course Management</h1>
+        <span class="badge-role-tag" [ngClass]="isManager ? 'role-manager' : 'role-hr'">
+          {{ isManager ? '👑 Admin / Manager Control' : '👁 HR Verification Mode' }}
+        </span>
+      </div>
+      <p class="header-desc">
+        Administer academic courses, manage training specifications, and maintain official curriculum documents.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button
+        *ngIf="isManager"
+        type="button"
+        class="btn-primary"
+        (click)="openAddCourseModal()"
+      >
+        <span class="btn-icon">+</span> Add New Course
+      </button>
+
+      <div *ngIf="isHr" class="hr-status-pill">
+        <span class="hr-dot">●</span> View &amp; Verify Access
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Alerts -->
+  <div *ngIf="errorMessage" class="alert-box error" role="alert">
+    <span>⚠ {{ errorMessage }}</span>
+    <button type="button" class="alert-close" (click)="errorMessage = ''">×</button>
+  </div>
+  <div *ngIf="successMessage" class="alert-box success" role="status">
+    <span>✓ {{ successMessage }}</span>
+    <button type="button" class="alert-close" (click)="successMessage = ''">×</button>
+  </div>
+
+  <!-- Role Notification Strip for HR -->
+  <div *ngIf="isHr" class="hr-notice-strip">
+    <span class="strip-icon">🛡</span>
+    <div class="strip-content">
+      <strong>HR View-Only Access:</strong>
+      <span>
+        You can inspect course specifications, audit updates made by Administration/Manager, and download official curriculum documents. Adding, editing, modifying, and deleting courses is restricted to Managers.
+      </span>
+    </div>
+  </div>
+
+  <!-- Metrics / Stats Bar -->
+  <section class="metrics-grid">
+    <div class="metric-card">
+      <span class="metric-label">Total Courses</span>
+      <strong class="metric-val">{{ courses.length }}</strong>
+      <span class="metric-sub">Catalog courses</span>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-label">Active Programs</span>
+      <strong class="metric-val text-green">
+        {{ (courses | slice:0:courses.length).filter(c => c.status === 'ACTIVE').length }}
+      </strong>
+      <span class="metric-sub">Open for enrollment</span>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-label">Curriculum Uploaded</span>
+      <strong class="metric-val text-blue">
+        {{ (courses | slice:0:courses.length).filter(c => c.curriculumFileId).length }}
+      </strong>
+      <span class="metric-sub">Docs ready for candidates</span>
+    </div>
+  </section>
+
+  <!-- Filter & Search Toolbar -->
+  <section class="toolbar-card">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="applyFilter()"
+        placeholder="Search courses by name, code, category, or description..."
+        class="search-input"
+      />
+      <button
+        *ngIf="searchQuery"
+        type="button"
+        class="clear-btn"
+        (click)="searchQuery = ''; applyFilter()"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="filters-row">
+      <div class="filter-item">
+        <label for="categoryFilter">Category</label>
+        <select id="categoryFilter" [(ngModel)]="categoryFilter" (change)="applyFilter()">
+          <option value="ALL">All Categories</option>
+          <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label for="curriculumFilter">Curriculum</label>
+        <select id="curriculumFilter" [(ngModel)]="curriculumFilter" (change)="applyFilter()">
+          <option value="ALL">All Courses</option>
+          <option value="WITH_CURRICULUM">Curriculum Uploaded</option>
+          <option value="WITHOUT_CURRICULUM">Curriculum Missing</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilter()">
+          <option value="ALL">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading course catalog and curriculum records...</p>
+  </div>
+
+  <!-- Course Catalog Table -->
+  <div *ngIf="!loading" class="table-card">
+    <div class="table-responsive">
+      <table class="course-table">
+        <thead>
+          <tr>
+            <th>Course Program</th>
+            <th>Category &amp; Code</th>
+            <th>Duration &amp; Mode</th>
+            <th>Course Fee</th>
+            <th>Curriculum Document</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let course of filteredCourses" [class.inactive-row]="course.status === 'INACTIVE'">
+            <!-- Course Program -->
+            <td class="course-main-cell">
+              <div class="course-name-wrap">
+                <button
+                  type="button"
+                  class="course-name-link"
+                  (click)="openViewDetails(course)"
+                  title="Click to view full course details"
+                >
+                  {{ course.name }}
+                </button>
+                <div class="course-badges">
+                  <span class="status-pill" [ngClass]="course.status === 'ACTIVE' ? 'pill-active' : 'pill-inactive'">
+                    {{ course.status }}
+                  </span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Category & Code -->
+            <td>
+              <div class="meta-cell">
+                <span class="category-tag">{{ course.category || 'General IT' }}</span>
+                <span class="code-text" *ngIf="course.code">{{ course.code }}</span>
+              </div>
+            </td>
+
+            <!-- Duration & Mode (Single box containing 15 Days to 6 Months) -->
+            <td>
+              <button
+                type="button"
+                class="duration-mode-single-box"
+                (click)="openTracksModal(course)"
+                title="Click to view all 4 duration categories (15 Days, 1 Month, 3 Months, 6 Months) with fees and curriculums"
+              >
+                <div class="single-box-header">
+                  <span class="single-box-icon">⏱</span>
+                  <span class="single-box-title">15 Days to 6 Months</span>
+                </div>
+                <div class="single-box-footer">
+                  <span class="single-box-mode">📡 {{ course.mode || 'Online / Offline' }}</span>
+                  <span class="single-box-action">4 Categories ▾</span>
+                </div>
+              </button>
+            </td>
+
+            <!-- Course Fee (Editable only by Manager, View-only for HR) -->
+            <td>
+              <div class="fee-display-cell">
+                <strong class="fee-amount-text">
+                  {{ course.fees ? ('₹' + (course.fees | number)) : '₹0' }}
+                </strong>
+                <span class="fee-role-badge" *ngIf="isManager" title="Editable by Manager only">
+                  ✎ Manager Editable
+                </span>
+                <span class="fee-role-badge hr-view-only" *ngIf="!isManager" title="Read-only for HR">
+                  🔒 HR Read-Only
+                </span>
+              </div>
+            </td>
+
+            <!-- Curriculum Document -->
+            <td>
+              <div *ngIf="course.curriculumFileId" class="curriculum-cell">
+                <span class="curriculum-badge" [ngClass]="getCurriculumBadgeClass(course.curriculumFileType)">
+                  {{ course.curriculumFileType || 'DOC' }}
+                </span>
+                <div class="curriculum-info">
+                  <button
+                    type="button"
+                    class="curriculum-download-link"
+                    (click)="downloadCurriculum(course)"
+                    [title]="'Download ' + course.curriculumFileName"
+                  >
+                    ⬇ {{ course.curriculumFileName }}
+                  </button>
+                  <span class="file-size">{{ formatFileSize(course.curriculumFileSize) }}</span>
+                </div>
+              </div>
+
+              <div *ngIf="!course.curriculumFileId" class="no-curriculum-hint">
+                <span class="missing-dot">●</span>
+                <span>No curriculum uploaded</span>
+              </div>
+            </td>
+
+            <!-- Actions (Manager: Edit/Delete/Upload; HR: View/Download) -->
+            <td class="text-right actions-cell">
+              <!-- Manager Actions -->
+              <div *ngIf="isManager" class="action-btn-group">
+                <button
+                  type="button"
+                  class="btn-action-icon tracks"
+                  (click)="openTracksModal(course)"
+                  title="Configure 4 Duration Tracks (Fees & Syllabi)"
+                >
+                  ⏱ Tracks
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-action-icon upload"
+                  (click)="openUploadCurriculum(course)"
+                  [title]="course.curriculumFileId ? 'Replace Curriculum File' : 'Upload Curriculum Document'"
+                >
+                  📄 {{ course.curriculumFileId ? 'Replace' : 'Upload' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-action-icon edit"
+                  (click)="openEditCourseModal(course)"
+                  title="Edit & Modify Course Details"
+                >
+                  ✎ Edit
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-action-icon delete"
+                  (click)="confirmDelete(course)"
+                  title="Delete Course Program"
+                >
+                  🗑
+                </button>
+              </div>
+
+              <!-- HR Actions (Read-Only Verification) -->
+              <div *ngIf="!isManager" class="action-btn-group">
+                <button
+                  type="button"
+                  class="btn-action-icon tracks"
+                  (click)="openTracksModal(course)"
+                  title="View 4 Duration Tracks (Fees & Syllabi)"
+                >
+                  ⏱ Tracks
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-action-icon view"
+                  (click)="openViewDetails(course)"
+                  title="View full specifications & audit verification"
+                >
+                  👁 View &amp; Verify
+                </button>
+
+                <button
+                  *ngIf="course.curriculumFileId"
+                  type="button"
+                  class="btn-action-icon download"
+                  (click)="downloadCurriculum(course)"
+                  title="Download Curriculum Document"
+                >
+                  ⬇ Download
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="filteredCourses.length === 0">
+            <td colspan="6" class="empty-state">
+              <div class="empty-content">
+                <span class="empty-icon">📚</span>
+                <h3>No courses match your filter criteria</h3>
+                <p>Try clearing your search query or adjusting the category filters.</p>
+                <button *ngIf="isManager" type="button" class="btn-primary" (click)="openAddCourseModal()">
+                  + Add New Course Program
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT COURSE MODAL (MANAGER ONLY) -->
+  <div *ngIf="showCourseModal" class="modal-backdrop" (click)="closeCourseModal()" role="dialog" aria-modal="true">
+    <div class="modal-card course-modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h3>{{ editingCourseId ? 'Edit & Modify Course Program' : 'Add New Course Program' }}</h3>
+          <p>Configure course specifications, pricing parameters, and delivery details.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeCourseModal()">×</button>
+      </header>
+
+      <form (ngSubmit)="saveCourse()" class="modal-form">
+        <div *ngIf="courseFormError" class="modal-alert-error" role="alert">
+          ⚠ {{ courseFormError }}
+        </div>
+
+        <div class="form-row">
+          <div class="form-field full-width">
+            <label for="courseName">Course Title *</label>
+            <input
+              id="courseName"
+              type="text"
+              [(ngModel)]="courseName"
+              name="courseName"
+              (ngModelChange)="onCourseNameChange($event)"
+              list="standardCourseTitlesList"
+              placeholder="e.g. Full Stack Development with Java & Angular"
+              required
+            />
+            <datalist id="standardCourseTitlesList">
+              <option *ngFor="let title of standardCourseTitles" [value]="title"></option>
+            </datalist>
+            <span class="field-hint">Enter custom course title or choose from suggested standard programs.</span>
+          </div>
+        </div>
+
+        <!-- Curriculum Document Upload Option in Pop Up -->
+        <div class="form-field full-width">
+          <label>Course Curriculum Document (Optional)</label>
+          <div class="modal-upload-box">
+            <div class="modal-file-select-row">
+              <label class="btn-browse-file" for="courseModalFileInput">
+                📁 Choose Curriculum File
+              </label>
+              <input
+                id="courseModalFileInput"
+                type="file"
+                class="hidden-file-input"
+                (change)="onModalCurriculumSelected($event)"
+                accept=".pdf,.doc,.docx,.ppt,.pptx"
+                #modalCurriculumInput
+              />
+              <span class="file-hint-text">Allowed: <strong>PDF, PPT, PPTX, DOC, DOCX</strong> (Max 15 MB)</span>
+            </div>
+
+            <div *ngIf="modalCurriculumError" class="modal-alert-error mt-05">
+              ⚠ {{ modalCurriculumError }}
+            </div>
+
+            <div *ngIf="modalCurriculumFile" class="modal-selected-pill">
+              <span class="pill-icon">📄</span>
+              <div class="pill-info">
+                <strong>{{ modalCurriculumFile.name }}</strong>
+                <span>{{ formatFileSize(modalCurriculumFile.size) }} • Ready to upload</span>
+              </div>
+              <button
+                type="button"
+                class="btn-clear-pill"
+                (click)="clearModalCurriculum(modalCurriculumInput)"
+                title="Remove selected file"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Duration Structure for each course with separate duration options inside this box -->
+        <div class="modal-duration-tracks-section">
+          <div class="section-label-row">
+            <div>
+              <label class="section-title">⏱ Course Durations &amp; Pricing Structure (15 Days to 6 Months)</label>
+              <span class="field-hint">Specify fees for each duration category separately. You can also add more durations.</span>
+            </div>
+            <button type="button" class="btn-add-track-sm" (click)="addModalTrack()">
+              + Add Duration Track
+            </button>
+          </div>
+
+          <div class="modal-tracks-list">
+            <div *ngFor="let track of modalTracks; let i = index" class="modal-track-row">
+              <div class="track-col-duration">
+                <label [for]="'modalTrackDur_' + i">Duration Category</label>
+                <input
+                  [id]="'modalTrackDur_' + i"
+                  type="text"
+                  [(ngModel)]="track.duration"
+                  [name]="'modalTrackDur_' + i"
+                  placeholder="e.g. 15 Days, 1 Month, 3 Months"
+                  required
+                />
+              </div>
+
+              <div class="track-col-fee">
+                <label [for]="'modalTrackFee_' + i">Fee Amount (₹)</label>
+                <div class="input-with-prefix">
+                  <span class="currency-prefix">₹</span>
+                  <input
+                    [id]="'modalTrackFee_' + i"
+                    type="number"
+                    min="0"
+                    [(ngModel)]="track.fees"
+                    [name]="'modalTrackFee_' + i"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn-remove-track"
+                (click)="removeModalTrack(i)"
+                *ngIf="modalTracks.length > 1"
+                title="Remove this duration track"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="courseMode">Training Mode</label>
+            <select id="courseMode" [(ngModel)]="courseMode" name="courseMode">
+              <option *ngFor="let opt of modeOptions" [value]="opt">{{ opt }}</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="courseStatus">Program Status</label>
+            <select id="courseStatus" [(ngModel)]="courseStatus" name="courseStatus">
+              <option value="ACTIVE">ACTIVE (Open for Registration)</option>
+              <option value="INACTIVE">INACTIVE (Hidden / Archived)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="courseDescription">Course Overview &amp; Curriculum Scope</label>
+          <textarea
+            id="courseDescription"
+            rows="3"
+            [(ngModel)]="courseDescription"
+            name="courseDescription"
+            placeholder="Comprehensive description of the curriculum, objectives, and training deliverables..."
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="courseKeyTopics">Key Curriculum Modules (Comma-separated)</label>
+          <input
+            id="courseKeyTopics"
+            type="text"
+            [(ngModel)]="courseKeyTopics"
+            name="courseKeyTopics"
+            placeholder="e.g. Java 17, Spring Boot, Angular, TypeScript, PostgreSQL"
+          />
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeCourseModal()" [disabled]="savingCourse">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="savingCourse || !courseName.trim()">
+            {{ savingCourse ? 'Saving Course...' : (editingCourseId ? 'Save Changes' : 'Create Course') }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- UPLOAD CURRICULUM MODAL (MANAGER ONLY) -->
+  <div *ngIf="showUploadModal && uploadCourse" class="modal-backdrop" (click)="closeUploadModal()" role="dialog" aria-modal="true">
+    <div class="modal-card upload-modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h3>Upload Course Curriculum</h3>
+          <p>Attach the official curriculum document for <strong>{{ uploadCourse.name }}</strong>.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeUploadModal()">×</button>
+      </header>
+
+      <div class="modal-body">
+        <div *ngIf="uploadError" class="modal-alert-error" role="alert">
+          ⚠ {{ uploadError }}
+        </div>
+
+        <div class="upload-dropzone">
+          <span class="dropzone-icon">📁</span>
+          <h4>Select Curriculum Document</h4>
+          <p class="dropzone-hint">
+            Allowed formats: <strong>PDF, DOC, DOCX, PPT, PPTX</strong> (Max: 15 MB)
+          </p>
+
+          <input
+            #curriculumInput
+            type="file"
+            accept=".pdf,.doc,.docx,.ppt,.pptx"
+            (change)="onCurriculumSelected($event)"
+            class="hidden-file-input"
+          />
+
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="curriculumInput.click()"
+            [disabled]="uploadingCurriculum"
+          >
+            {{ curriculumFile ? 'Change Selected File' : 'Browse File from Computer' }}
+          </button>
+
+          <div *ngIf="curriculumFile" class="selected-file-card">
+            <span class="file-icon">📄</span>
+            <div class="file-details">
+              <strong>{{ curriculumFile.name }}</strong>
+              <span>{{ formatFileSize(curriculumFile.size) }}</span>
+            </div>
+            <span class="file-ready-tag">✓ Ready to Upload</span>
+          </div>
+        </div>
+
+        <div *ngIf="uploadCourse.curriculumFileId" class="current-curriculum-notice">
+          <strong>Current File:</strong> {{ uploadCourse.curriculumFileName }}
+          <span class="current-sub">Uploading a new file will replace the current curriculum document.</span>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button
+          *ngIf="uploadCourse.curriculumFileId"
+          type="button"
+          class="btn-danger-outline"
+          (click)="removeCurriculum(uploadCourse); closeUploadModal()"
+          [disabled]="uploadingCurriculum"
+        >
+          Remove Current File
+        </button>
+
+        <button type="button" class="btn-secondary" (click)="closeUploadModal()" [disabled]="uploadingCurriculum">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="submitCurriculum()"
+          [disabled]="uploadingCurriculum || !curriculumFile"
+        >
+          {{ uploadingCurriculum ? 'Uploading Curriculum...' : 'Upload & Save Curriculum' }}
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL (MANAGER ONLY) -->
+  <div *ngIf="courseToDelete" class="modal-backdrop" (click)="cancelDelete()" role="dialog" aria-modal="true">
+    <div class="modal-card confirm-modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h3>Confirm Course Deletion</h3>
+          <p>Permanent removal from course catalog.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="cancelDelete()">×</button>
+      </header>
+
+      <div class="modal-body confirm-body">
+        <p>
+          Are you sure you want to delete <strong>{{ courseToDelete.name }}</strong>?
+        </p>
+        <p class="warning-sub" *ngIf="courseToDelete.curriculumFileId">
+          ⚠ The attached curriculum file <strong>{{ courseToDelete.curriculumFileName }}</strong> will also be permanently deleted.
+        </p>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="cancelDelete()" [disabled]="deletingCourse">
+          Cancel
+        </button>
+        <button type="button" class="btn-danger" (click)="deleteCourse()" [disabled]="deletingCourse">
+          {{ deletingCourse ? 'Deleting Course...' : 'Yes, Delete Course' }}
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- VIEW & AUDIT VERIFICATION MODAL (HR & MANAGER) -->
+  <div *ngIf="viewCourse" class="modal-backdrop" (click)="closeViewDetails()" role="dialog" aria-modal="true">
+    <div class="modal-card view-modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <div class="view-header-title">
+            <h3>{{ viewCourse.name }}</h3>
+            <span class="status-pill" [ngClass]="viewCourse.status === 'ACTIVE' ? 'pill-active' : 'pill-inactive'">
+              {{ viewCourse.status }}
+            </span>
+          </div>
+          <p>Course specifications, official curriculum documents, and administration audit details.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeViewDetails()">×</button>
+      </header>
+
+      <div class="modal-body view-body">
+        <!-- Audit verification banner -->
+        <div class="audit-verification-banner">
+          <span class="audit-icon">🛡</span>
+          <div>
+            <strong>Administration Audit Trail:</strong>
+            <span>Last modified by <strong>{{ viewCourse.lastModifiedBy || 'Administration' }}</strong> on {{ viewCourse.updatedAt | date:'medium' }}.</span>
+          </div>
+        </div>
+
+        <div class="spec-grid">
+          <div class="spec-item">
+            <span class="spec-lbl">Category</span>
+            <span class="spec-val">{{ viewCourse.category || 'General IT' }}</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-lbl">Course Code</span>
+            <span class="spec-val">{{ viewCourse.code || 'None' }}</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-lbl">Duration</span>
+            <span class="spec-val">{{ viewCourse.duration || '3 Months' }}</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-lbl">Delivery Mode</span>
+            <span class="spec-val">{{ viewCourse.mode || 'Online / Offline' }}</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-lbl">Course Fee Amount</span>
+            <span class="spec-val fee-color">
+              {{ viewCourse.fees ? ('₹' + (viewCourse.fees | number)) : '₹0' }}
+              <span class="badge-lock" *ngIf="!isManager">🔒 HR Read-Only</span>
+              <span class="fee-role-badge" *ngIf="isManager">✎ Manager Configured</span>
+            </span>
+          </div>
+        </div>
+
+        <div *ngIf="viewCourse.description" class="spec-section">
+          <h4>Program Overview</h4>
+          <p class="desc-text">{{ viewCourse.description }}</p>
+        </div>
+
+        <div *ngIf="viewCourse.keyTopics && viewCourse.keyTopics.length > 0" class="spec-section">
+          <h4>Curriculum Modules &amp; Technologies</h4>
+          <div class="topics-tags-wrap">
+            <span *ngFor="let topic of viewCourse.keyTopics" class="topic-tag">{{ topic }}</span>
+          </div>
+        </div>
+
+        <!-- Curriculum Document Card in Details View -->
+        <div class="spec-section">
+          <h4>Official Curriculum Document</h4>
+          <div *ngIf="viewCourse.curriculumFileId" class="view-curriculum-card">
+            <div class="view-curriculum-left">
+              <span class="curriculum-badge lg" [ngClass]="getCurriculumBadgeClass(viewCourse.curriculumFileType)">
+                {{ viewCourse.curriculumFileType || 'DOC' }}
+              </span>
+              <div>
+                <strong>{{ viewCourse.curriculumFileName }}</strong>
+                <span class="file-meta">
+                  {{ formatFileSize(viewCourse.curriculumFileSize) }} • Uploaded {{ viewCourse.curriculumUploadedAt | date:'mediumDate' }}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-primary"
+              (click)="downloadCurriculum(viewCourse)"
+            >
+              ⬇ Download Curriculum
+            </button>
+          </div>
+
+          <div *ngIf="!viewCourse.curriculumFileId" class="no-curriculum-box">
+            <span>📄 No curriculum document uploaded yet.</span>
+            <button
+              *ngIf="isManager"
+              type="button"
+              class="btn-secondary sm"
+              (click)="closeViewDetails(); openUploadCurriculum(viewCourse)"
+            >
+              Upload Curriculum Document
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button
+          *ngIf="isManager"
+          type="button"
+          class="btn-secondary"
+          (click)="closeViewDetails(); openEditCourseModal(viewCourse)"
+        >
+          ✎ Edit Course
+        </button>
+        <button type="button" class="btn-primary" (click)="closeViewDetails()">
+          Close
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- DURATION TRACKS & SYLLABI MODAL (OPTION A) -->
+  <div *ngIf="showTracksModal && selectedTrackCourse" class="modal-backdrop" (click)="closeTracksModal()" role="dialog" aria-modal="true">
+    <div class="modal-card tracks-modal-card" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <div class="tracks-modal-title-row">
+            <h3>Duration Tracks &amp; Syllabi</h3>
+            <span class="badge-role-tag" [ngClass]="isManager ? 'role-manager' : 'role-hr'">
+              {{ isManager ? '✎ Manager Configuration' : '🔒 HR Verification (Read-Only)' }}
+            </span>
+          </div>
+          <p>
+            Configure independent fees and curriculums for each of the 4 duration tracks of <strong>{{ selectedTrackCourse.name }}</strong>.
+          </p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeTracksModal()">×</button>
+      </header>
+
+      <div class="modal-body tracks-body">
+        <div *ngIf="trackCurriculumError" class="modal-alert-error" role="alert">
+          ⚠ {{ trackCurriculumError }}
+        </div>
+
+        <!-- Duration Tabs: 15 Days | 1 Month | 3 Months | 6 Months & Custom -->
+        <div class="tracks-nav-tabs">
+          <button
+            *ngFor="let d of getCourseDurations(selectedTrackCourse)"
+            type="button"
+            class="track-tab-btn"
+            [class.active]="activeTrackDuration === d"
+            (click)="selectTrackDuration(d)"
+          >
+            <span class="tab-duration-title">{{ d }}</span>
+            <span class="tab-fee-badge">₹{{ (getTrackByDuration(selectedTrackCourse, d)?.fees || 0) | number }}</span>
+            <span class="tab-file-dot" [class.has-file]="getTrackByDuration(selectedTrackCourse, d)?.curriculumFileId">
+              {{ getTrackByDuration(selectedTrackCourse, d)?.curriculumFileId ? '✓ Syllabus' : '○ Pending' }}
+            </span>
+          </button>
+        </div>
+
+        <!-- Selected Track Card -->
+        <div class="active-track-panel">
+          <div class="track-panel-header">
+            <div>
+              <h4>{{ activeTrackDuration }} Track Configuration</h4>
+              <p class="track-panel-sub">
+                Candidates enrolled in <strong>{{ selectedTrackCourse.name }}</strong> for <strong>{{ activeTrackDuration }}</strong> will automatically receive this curriculum and fee structure.
+              </p>
+            </div>
+          </div>
+
+          <!-- Section 1: Fee Structure -->
+          <div class="track-section-card">
+            <div class="track-sec-head">
+              <h5>1. Course Fee for {{ activeTrackDuration }}</h5>
+              <span *ngIf="!isManager" class="badge-lock">🔒 HR Read-Only</span>
+            </div>
+
+            <div class="fee-config-row">
+              <div class="input-with-prefix" *ngIf="isManager">
+                <span class="currency-prefix">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  [(ngModel)]="trackFees"
+                  placeholder="e.g. 15000"
+                  class="track-fee-input"
+                />
+              </div>
+              <button
+                *ngIf="isManager"
+                type="button"
+                class="btn-primary btn-save-fee"
+                (click)="saveTrackFee()"
+                [disabled]="savingTrackFee"
+              >
+                {{ savingTrackFee ? 'Saving...' : 'Update Fee (₹)' }}
+              </button>
+
+              <div *ngIf="!isManager" class="hr-fee-view">
+                <strong class="hr-fee-number">₹{{ (getActiveTrack()?.fees || 0) | number }}</strong>
+                <span class="hr-fee-label">Configured by Manager</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Curriculum Document -->
+          <div class="track-section-card mt-1">
+            <div class="track-sec-head">
+              <h5>2. Curriculum Document for {{ activeTrackDuration }}</h5>
+              <span *ngIf="!isManager" class="badge-lock">🔒 HR Read-Only</span>
+            </div>
+
+            <!-- When Curriculum File Exists -->
+            <div *ngIf="getActiveTrack()?.curriculumFileId" class="track-curriculum-active">
+              <div class="track-curr-left">
+                <span class="curriculum-badge lg" [ngClass]="getCurriculumBadgeClass(getActiveTrack()?.curriculumFileType)">
+                  {{ getActiveTrack()?.curriculumFileType || 'DOC' }}
+                </span>
+                <div class="track-file-meta">
+                  <strong>{{ getActiveTrack()?.curriculumFileName }}</strong>
+                  <span>
+                    {{ formatFileSize(getActiveTrack()?.curriculumFileSize) }}
+                    <span *ngIf="getActiveTrack()?.curriculumUploadedAt"> • Uploaded {{ getActiveTrack()?.curriculumUploadedAt | date:'mediumDate' }}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="track-curr-actions">
+                <button
+                  type="button"
+                  class="btn-primary"
+                  (click)="downloadTrackCurriculum(selectedTrackCourse, activeTrackDuration)"
+                  title="Download syllabus for this duration"
+                >
+                  ⬇ Download Syllabus
+                </button>
+                <button
+                  *ngIf="isManager"
+                  type="button"
+                  class="btn-danger-outline"
+                  (click)="deleteTrackCurriculum()"
+                  title="Remove this duration's curriculum"
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload / Replace Input (Manager Only) -->
+            <div *ngIf="isManager" class="track-upload-wrap" [class.mt-1]="getActiveTrack()?.curriculumFileId">
+              <label class="track-upload-label">
+                {{ getActiveTrack()?.curriculumFileId ? 'Replace Curriculum Document (.pdf, .ppt, .pptx, .doc, .docx):' : 'Upload Syllabus for ' + activeTrackDuration + ' (.pdf, .ppt, .pptx, .doc, .docx):' }}
+              </label>
+              <div class="modal-file-select-row">
+                <label class="btn-browse-file" [for]="'trackFileInput_' + activeTrackDuration">
+                  📁 {{ trackCurriculumFile ? 'Change Selected File' : 'Choose File' }}
+                </label>
+                <input
+                  [id]="'trackFileInput_' + activeTrackDuration"
+                  type="file"
+                  class="hidden-file-input"
+                  (change)="onTrackCurriculumSelected($event)"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx"
+                  #trackFileInput
+                />
+                <span class="file-hint-text" *ngIf="!trackCurriculumFile">Max 15 MB • PDF, PPT, PPTX, DOC, DOCX</span>
+                <span class="file-hint-text file-ready" *ngIf="trackCurriculumFile">
+                  📎 {{ trackCurriculumFile.name }} ({{ formatFileSize(trackCurriculumFile.size) }})
+                </span>
+                <button
+                  *ngIf="trackCurriculumFile"
+                  type="button"
+                  class="btn-primary"
+                  (click)="submitTrackCurriculum()"
+                  [disabled]="uploadingTrackCurriculum"
+                >
+                  {{ uploadingTrackCurriculum ? 'Uploading...' : 'Upload Syllabus' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- HR view when no file uploaded -->
+            <div *ngIf="!isManager && !getActiveTrack()?.curriculumFileId" class="no-file-hr-hint">
+              <span>● No curriculum document uploaded by administration for the {{ activeTrackDuration }} track yet.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeTracksModal()">
+          Close
+        </button>
+      </footer>
+    </div>
+  </div>
+</div>

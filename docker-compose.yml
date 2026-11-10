@@ -1,0 +1,52 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: recruitment-mongo
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - recruitment-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: recruitment-backend:latest
+    container_name: recruitment-backend
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env.production
+    networks:
+      - recruitment-net
+    expose:
+      - "3000"
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    image: recruitment-frontend:latest
+    container_name: recruitment-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - recruitment-net
+
+volumes:
+  mongo-data:
+
+networks:
+  recruitment-net:
+    driver: bridge

@@ -1,0 +1,828 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">CANDIDATE INTAKE</span>
+
+    <h2>Resume Import</h2>
+
+    <p>
+      Extract candidate details, save unique records automatically and review duplicates or incomplete details.
+    </p>
+  </div>
+</section>
+
+
+<section class="methods">
+
+  <div class="method-card">
+
+    <div class="method-icon blue">↥</div>
+
+    <div class="method-content">
+
+      <span class="method-label">OPTION 01</span>
+
+      <h3>Automatic extraction</h3>
+
+      <p>
+        Upload multiple PDF resumes or select a folder. The system processes
+        them one by one and extracts candidate information automatically.
+      </p>
+
+      <div class="upload-actions">
+
+        <label class="upload">
+
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            (change)="selectFiles($event)"
+            [disabled]="processing || importing"
+          />
+
+          Choose PDF Resumes
+
+        </label>
+
+
+        <label class="upload secondary-upload">
+
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            webkitdirectory
+            directory
+            multiple
+            (change)="selectFiles($event)"
+            [disabled]="processing || importing"
+          />
+
+          Select Resume Folder
+
+        </label>
+
+      </div>
+
+      <small>
+        You can select a folder containing hundreds of PDF resumes.
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <div class="method-card">
+
+    <div class="method-icon green">✎</div>
+
+    <div class="method-content">
+
+      <span class="method-label">OPTION 02</span>
+
+      <h3>Manual entry</h3>
+
+      <p>
+        Use manual entry when a resume is scanned, image-heavy or cannot be
+        read correctly by the PDF parser.
+      </p>
+
+      <button
+        type="button"
+        class="secondary"
+        (click)="openManual()"
+        [disabled]="processing || importing"
+      >
+        Add Candidate Manually
+      </button>
+
+    </div>
+
+  </div>
+
+  <div class="method-card">
+    <div class="method-icon orange">XL</div>
+    <div class="method-content">
+      <span class="method-label">OPTION 03</span>
+      <h3>Import Excel sheet</h3>
+      <p>Import candidate rows from an .xls or .xlsx workbook. Recognized fields are read when present; blank fields are allowed.</p>
+      <label class="upload secondary-upload">
+        <input
+          type="file"
+          accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          multiple
+          (change)="importExcel($event)"
+          [disabled]="processing || importing"
+        />
+        Choose Excel Sheet
+      </label>
+      <small>Candidate rows save to database automatically. Matching email or phone values are shown as duplicates.</small>
+    </div>
+  </div>
+
+</section>
+
+
+<section
+  class="card files-card"
+  *ngIf="files.length"
+>
+
+  <div class="card-head">
+
+    <div>
+
+      <span class="section-label">IMPORT QUEUE</span>
+
+      <h3>Selected Resumes</h3>
+
+      <p>
+        {{ files.length }}
+        PDF file{{ files.length === 1 ? '' : 's' }}
+        ready for processing.
+      </p>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="primary"
+      (click)="autoExtract()"
+      [disabled]="processing || importing"
+    >
+      {{ processing ? 'Processing...' : 'Extract Details' }}
+    </button>
+
+  </div>
+
+
+  <div class="queue-summary">
+
+    <div>
+      <strong>{{ files.length }}</strong>
+      <span>Total Files</span>
+    </div>
+
+    <div>
+      <strong>{{ totalProcessed }}</strong>
+      <span>Processed</span>
+    </div>
+
+    <div>
+      <strong>{{ readyCount }}</strong>
+      <span>Ready</span>
+    </div>
+
+    <div>
+      <strong>{{ reviewCount }}</strong>
+      <span>Review</span>
+    </div>
+
+    <div>
+      <strong>{{ duplicateCount }}</strong>
+      <span>Duplicates</span>
+    </div>
+
+    <div>
+      <strong>{{ failedCount }}</strong>
+      <span>Failed</span>
+    </div>
+
+  </div>
+
+
+  <div class="file-list">
+
+    <div
+      *ngFor="let file of files; let i = index"
+      [class.current]="processing && i === currentFileIndex"
+    >
+
+      <div class="file-main">
+
+        <span class="pdf">PDF</span>
+
+        <span class="file-name">
+          {{ file.name }}
+        </span>
+
+      </div>
+
+      <small>
+        {{ file.size / 1024 | number:'1.0-0' }} KB
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <div
+    class="progress-wrap"
+    *ngIf="processing"
+  >
+
+    <div class="progress-label">
+
+      <div>
+
+        <span>Processing resumes</span>
+
+        <strong>
+          {{ currentFileIndex + 1 }}
+          /
+          {{ files.length }}
+        </strong>
+
+      </div>
+
+      <b>
+        {{ progress }}%
+      </b>
+
+    </div>
+
+
+    <div class="processing-message">
+      {{ message || 'Starting resume processing...' }}
+    </div>
+
+
+    <div class="processing-file">
+
+      <span class="pdf">PDF</span>
+
+      <span>
+        {{ currentFileName }}
+      </span>
+
+    </div>
+
+
+    <div class="progress">
+      <span [style.width.%]="progress"></span>
+    </div>
+
+
+    <div class="progress-details">
+
+      <span>
+        {{ progress }}% completed
+      </span>
+
+      <span>
+        {{ totalProcessed }}
+        /
+        {{ files.length }}
+        processed
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div
+    class="processing-complete"
+    *ngIf="!processing && progress === 100"
+  >
+
+    <span>✓</span>
+
+    <div>
+
+      <strong>
+        Resume processing completed
+      </strong>
+
+      <small>
+        Unique candidates save automatically; duplicates and incomplete records stay in the list below.
+      </small>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<section
+  class="import-summary"
+  *ngIf="resumes.length && !processing"
+>
+
+  <div class="summary-head">
+
+    <div>
+
+      <span class="section-label">
+        PROCESSING SUMMARY
+      </span>
+
+      <h3>
+        Import Results
+      </h3>
+
+    </div>
+
+    <span class="summary-total">
+      {{ resumes.length }} processed
+    </span>
+
+  </div>
+
+
+  <div class="summary-grid">
+
+    <div class="summary-box success-box">
+
+      <strong>
+        {{ readyCount }}
+      </strong>
+
+      <span>
+        Ready to Import
+      </span>
+
+    </div>
+
+
+    <div class="summary-box review-box">
+
+      <strong>
+        {{ reviewCount }}
+      </strong>
+
+      <span>
+        Needs Review
+      </span>
+
+    </div>
+
+
+    <div class="summary-box duplicate-box">
+
+      <strong>
+        {{ duplicateCount }}
+      </strong>
+
+      <span>
+        Duplicates
+      </span>
+
+    </div>
+
+
+    <div class="summary-box failed-box">
+
+      <strong>
+        {{ failedCount }}
+      </strong>
+
+      <span>
+        Failed
+      </span>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<div
+  class="notice success"
+  *ngIf="message && !processing"
+>
+  {{ message }}
+</div>
+
+
+<div
+  class="notice error"
+  *ngIf="error"
+>
+  {{ error }}
+</div>
+
+
+<section
+  class="card review-card"
+  *ngIf="resumes.length"
+>
+
+  <div class="card-head">
+
+    <div>
+
+      <span class="section-label">
+        QUALITY CHECK
+      </span>
+
+      <h3>
+        Review Candidates
+      </h3>
+
+      <p>
+        Verify extracted information before adding candidates to the database.
+      </p>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="primary"
+      (click)="importCandidates()"
+      [disabled]="processing || importing || !readyCount"
+    >
+      {{
+        importing
+          ? 'Importing...'
+          : 'Import ' +
+            readyCount +
+            ' Candidate' +
+            (readyCount === 1 ? '' : 's')
+      }}
+    </button>
+
+  </div>
+
+
+  <div
+    class="review-item"
+    *ngFor="let resume of resumes; let i = index"
+    [class.duplicate]="resume.importStatus === 'DUPLICATE'"
+    [class.failed]="resume.importStatus === 'FAILED'"
+    [class.needs-review]="resume.mode === 'NEEDS_REVIEW'"
+  >
+
+    <div class="review-top">
+
+      <div class="review-file">
+
+        <span class="pdf">
+          PDF
+        </span>
+
+        <div>
+
+          <strong>
+            {{ resume.resumeName }}
+          </strong>
+
+          <small>
+            {{
+              resume.file?.size
+                ? ((resume.file!.size / 1024) | number:'1.0-0') + ' KB'
+                : ''
+            }}
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="review-actions">
+
+        <span
+          class="mode"
+          [class.manual]="resume.mode !== 'AUTO'"
+          [class.duplicate-status]="resume.importStatus === 'DUPLICATE'"
+          [class.failed-status]="resume.importStatus === 'FAILED'"
+        >
+
+          {{
+            resume.importStatus === 'DUPLICATE'
+              ? 'Duplicate'
+              : resume.importStatus === 'FAILED'
+                ? 'Failed'
+                : resume.mode === 'AUTO'
+                  ? 'Auto Parsed'
+                  : resume.mode === 'MANUAL'
+                    ? 'Manual Entry'
+                    : 'Needs Review'
+          }}
+
+        </span>
+
+
+        <button
+          type="button"
+          class="remove"
+          (click)="remove(i)"
+          [disabled]="processing || importing"
+        >
+          Remove
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="item-warning"
+      *ngIf="resume.errorMessage"
+    >
+      {{ resume.errorMessage }}
+    </div>
+
+
+    <div class="form-grid">
+
+      <label>
+
+        Name
+
+        <input
+          [(ngModel)]="resume.name"
+          (ngModelChange)="onCandidateFieldChange(resume)"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label>
+
+        Phone
+
+        <input
+          [(ngModel)]="resume.phone"
+          (ngModelChange)="onCandidateFieldChange(resume)"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label>
+
+        Email
+
+        <input
+          [(ngModel)]="resume.email"
+          (ngModelChange)="onCandidateFieldChange(resume)"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label>
+
+        Position
+
+        <input
+          [(ngModel)]="resume.position"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label>
+
+        Experience
+
+        <input
+          [(ngModel)]="resume.experience"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label>
+
+        Location
+
+        <input
+          [(ngModel)]="resume.location"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+
+      <label class="wide">
+
+        Skills
+
+        <input
+          [ngModel]="resume.skills.join(', ')"
+          (ngModelChange)="updateSkills(resume, $event)"
+          [disabled]="
+            processing ||
+            importing ||
+            resume.importStatus === 'DUPLICATE'
+          "
+        />
+
+      </label>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<section
+  class="manual-panel"
+  *ngIf="manualOpen"
+>
+
+  <div class="manual-card">
+
+    <div class="modal-head">
+
+      <div>
+
+        <span class="eyebrow">
+          MANUAL ENTRY
+        </span>
+
+        <h3>
+          Add Candidate
+        </h3>
+
+        <p>
+          Enter candidate details and attach the original PDF.
+        </p>
+
+      </div>
+
+
+      <button
+        type="button"
+        class="close"
+        (click)="closeManual()"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div
+      class="notice error"
+      *ngIf="error"
+    >
+      {{ error }}
+    </div>
+
+
+    <div class="form-grid">
+
+      <label class="wide">
+
+        Resume PDF
+
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          (change)="selectManualFile($event)"
+        />
+
+      </label>
+
+
+      <label>
+
+        Name
+
+        <input
+          [(ngModel)]="manual.name"
+          placeholder="Candidate name"
+        />
+
+      </label>
+
+
+      <label>
+
+        Phone
+
+        <input
+          [(ngModel)]="manual.phone"
+          placeholder="Phone number"
+        />
+
+      </label>
+
+
+      <label>
+
+        Email
+
+        <input
+          [(ngModel)]="manual.email"
+          placeholder="Email address"
+        />
+
+      </label>
+
+
+      <label>
+
+        Position
+
+        <input
+          [(ngModel)]="manual.position"
+          placeholder="Target position"
+        />
+
+      </label>
+
+
+      <label>
+
+        Experience
+
+        <input
+          [(ngModel)]="manual.experience"
+          placeholder="Example: 2 Years"
+        />
+
+      </label>
+
+
+      <label>
+
+        Location
+
+        <input
+          [(ngModel)]="manual.location"
+          placeholder="City"
+        />
+
+      </label>
+
+
+      <label class="wide">
+
+        Skills
+
+        <input
+          [ngModel]="manual.skills.join(', ')"
+          (ngModelChange)="updateSkills(manual, $event)"
+          placeholder="Java, Spring Boot, SQL"
+        />
+
+      </label>
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        type="button"
+        class="secondary"
+        (click)="closeManual()"
+      >
+        Cancel
+      </button>
+
+
+      <button
+        type="button"
+        class="primary"
+        (click)="addManual()"
+      >
+        Add to Review
+      </button>
+
+    </div>
+
+  </div>
+
+</section>

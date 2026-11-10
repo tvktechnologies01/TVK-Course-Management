@@ -1,0 +1,1262 @@
+<div class="external-resumes-page">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">HR PORTAL • RESUME &amp; ENROLLMENT PIPELINE</span>
+      <h1>External Resumes Management</h1>
+      <p class="subtitle">
+        Manage prospective candidates from public website registrations (Inbound) and external email submissions (Outbound).
+      </p>
+    </div>
+
+    <!-- Category Switcher Tabs -->
+    <div class="category-tabs">
+      <button
+        type="button"
+        class="cat-tab-btn"
+        [class.active]="activeCategory === 'INBOUND'"
+        (click)="switchCategory('INBOUND')"
+      >
+        <span class="cat-icon">📥</span>
+        <span>Inbound ({{ inboundTotalCount }})</span>
+      </button>
+
+      <button
+        type="button"
+        class="cat-tab-btn"
+        [class.active]="activeCategory === 'OUTBOUND'"
+        (click)="switchCategory('OUTBOUND')"
+      >
+        <span class="cat-icon">📤</span>
+        <span>Outbound ({{ outboundTotalCount }})</span>
+        <span *ngIf="pendingOutboundCount > 0" class="badge-pending-pill" title="Outbound candidates pending HR assignment">
+          {{ pendingOutboundCount }} Pending
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Alerts -->
+  <div *ngIf="successMessage" class="alert-box success" role="alert">
+    ✓ {{ successMessage }}
+  </div>
+  <div *ngIf="errorMessage" class="alert-box error" role="alert">
+    ⚠ {{ errorMessage }}
+  </div>
+
+  <!-- Filter & Action Bar (for Inbound & Outbound) -->
+  <div  class="filter-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="activeCategory === 'INBOUND' ? applyInboundFilter() : applyOutboundFilter()"
+        placeholder="Search candidates by name, email, phone, course..."
+      />
+      <button *ngIf="searchQuery" class="clear-search" (click)="searchQuery = ''; activeCategory === 'INBOUND' ? applyInboundFilter() : applyOutboundFilter()">×</button>
+    </div>
+
+    <div class="filter-actions">
+      <!-- Payment Status Filter (for Inbound) -->
+      <div *ngIf="activeCategory === 'INBOUND'" class="select-group">
+        <label for="paymentFilter">Payment:</label>
+        <select id="paymentFilter" [(ngModel)]="paymentFilter" (change)="applyInboundFilter()">
+          <option value="ALL">All Payments</option>
+          <option value="Pending">Pending</option>
+          <option value="Verification Pending">Verification Pending</option>
+          <option value="Partially Paid">Partially Paid</option>
+          <option value="Paid">Paid</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+
+      <!-- Candidate Status Filter -->
+      <div class="select-group">
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="activeCategory === 'INBOUND' ? applyInboundFilter() : applyOutboundFilter()">
+          <option value="ALL">All Statuses</option>
+          <option value="NEW">New</option>
+          <option value="ASSIGNED">Assigned</option>
+          <option value="INTERESTED">Interested</option>
+          <option value="SELECTED">Selected</option>
+        </select>
+      </div>
+
+      <!-- Outbound Assignment Filter -->
+      <div *ngIf="activeCategory === 'OUTBOUND'" class="select-group">
+        <label for="outboundAssignmentFilter">Assignment:</label>
+        <select id="outboundAssignmentFilter" [(ngModel)]="outboundAssignmentFilter" (change)="onOutboundFilterChange()">
+          <option value="ALL">All Resumes ({{ outboundCandidates.length }})</option>
+          <option value="PENDING">Pending HR Assignment ({{ pendingOutboundCount }})</option>
+          <option value="ASSIGNED">Assigned to HR ({{ outboundCandidates.length - pendingOutboundCount }})</option>
+        </select>
+      </div>
+
+      <!-- Outbound HR Recruiter Filter (Manager) -->
+      <div *ngIf="activeCategory === 'OUTBOUND' && canManagePaymentQr && hrEmployees.length > 0" class="select-group">
+        <label for="outboundHrFilter">HR Recruiter:</label>
+        <select id="outboundHrFilter" [(ngModel)]="outboundHrFilter" (change)="onOutboundFilterChange()">
+          <option value="ALL">All Recruiters</option>
+          <option *ngFor="let hr of hrEmployees" [value]="hr.id">{{ hr.name }}</option>
+        </select>
+      </div>
+
+      <button *ngIf="activeCategory === 'OUTBOUND'" type="button" class="btn-primary" (click)="openAddOutboundModal()">
+        + Add External Resume
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="activeCategoryLoading" class="state-card" role="status">
+    <div class="spinner"></div>
+    <p>Loading {{ activeCategory === 'INBOUND' ? 'inbound registrations' : 'outbound resumes' }} from database...</p>
+  </div>
+
+  <!-- Main Grid Layout -->
+  <div class="layout-container" *ngIf="!activeCategoryLoading">
+    <!-- Candidates Table List -->
+    <div class="table-container">
+      <!-- INBOUND TABLE -->
+      <table *ngIf="activeCategory === 'INBOUND'" class="data-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Contact</th>
+            <th>Course / Track</th>
+            <th>Duration</th>
+            <th>Payment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let candidate of filteredInbound" [class.selected-row]="selectedCandidate?.id === candidate.id">
+            <td>
+              <div class="candidate-identity">
+                <button
+                  type="button"
+                  class="candidate-name-btn"
+                  (click)="selectCandidate(candidate)"
+                  title="Click to view candidate details"
+                >
+                  {{ candidate.name }}
+                </button>
+                <span class="candidate-id">{{ candidate.id }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="candidate-contact">
+                <span>{{ candidate.phone }}</span>
+                <span class="contact-email">{{ candidate.email }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="course-summary">
+                <span class="course-title">{{ candidate.courseName || candidate.position || candidate.programmingLanguage }}</span>
+                <span class="course-mode badge-mode">{{ candidate.modeOfCourse || 'Online' }}</span>
+              </div>
+            </td>
+            <td>
+              <span>{{ candidate.courseDuration || '3 Months' }}</span>
+            </td>
+            <td>
+              <div class="payment-cell">
+                <span class="payment-badge" [ngClass]="(candidate.paymentStatus || 'Pending').toLowerCase().replace(' ', '-')">
+                  {{ candidate.paymentStatus || 'Pending' }}
+                </span>
+                <span *ngIf="candidate.totalFee" class="fee-text">
+                  ₹{{ candidate.amountPaid || 0 }} / ₹{{ candidate.totalFee }}
+                </span>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="filteredInbound.length === 0">
+            <td colspan="5" class="empty-state">
+              No inbound candidate registrations match your filter criteria.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- OUTBOUND TABLE -->
+      <table *ngIf="activeCategory === 'OUTBOUND'" class="data-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Contact</th>
+            <th>Position / Skill</th>
+            <th>Location</th>
+            <th>Assigned Recruiter</th>
+            <th>Status</th>
+            <th>Resume</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let candidate of filteredOutbound" [class.selected-row]="selectedCandidate?.id === candidate.id">
+            <td>
+              <div class="candidate-identity">
+                <button
+                  type="button"
+                  class="candidate-name-btn"
+                  (click)="selectCandidate(candidate)"
+                  title="Click to view candidate details"
+                >
+                  {{ candidate.name }}
+                </button>
+                <span class="candidate-id">{{ candidate.id }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="candidate-contact">
+                <span>{{ candidate.phone }}</span>
+                <span class="contact-email">{{ candidate.email }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="course-title">{{ candidate.position }}</span>
+            </td>
+            <td>
+              <span>{{ candidate.location || 'Not provided' }}</span>
+            </td>
+            <td>
+              <div class="recruiter-cell">
+                <span *ngIf="candidate.assignedToName" class="badge-recruiter" title="Assigned HR Recruiter">
+                  👤 {{ candidate.assignedToName }}
+                </span>
+                <span *ngIf="!candidate.assignedToName" class="badge-unassigned-tag" title="Pending HR Assignment">
+                  ⏳ Pending HR
+                </span>
+                <button
+                  *ngIf="canManagePaymentQr && !candidate.assignedToId"
+                  type="button"
+                  class="btn-assign-quick"
+                  (click)="selectCandidate(candidate, 'PROFILE')"
+                  title="Assign to HR Recruiter"
+                >
+                  Assign
+                </button>
+              </div>
+            </td>
+            <td>
+              <span class="badge-status-tag" [ngClass]="(candidate.status || 'new').toLowerCase().replace(' ', '-')">
+                {{ candidate.status === 'NEW' && !candidate.assignedToId ? 'Pending' : candidate.status }}
+              </span>
+            </td>
+            <td>
+              <a *ngIf="candidate.resumeFileId" [href]="'/api/resumes/' + candidate.resumeFileId + '/download'" target="_blank" class="resume-badge">
+                📄 View Resume
+              </a>
+              <span *ngIf="!candidate.resumeFileId" class="text-muted">No File</span>
+            </td>
+          </tr>
+          <tr *ngIf="filteredOutbound.length === 0">
+            <td colspan="7" class="empty-state">
+              No outbound resumes match your criteria. Click "+ Add External Resume" above to enter a new candidate.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CANDIDATE DETAILS POPUP MODAL (SINGLE VERTICALLY SCROLLABLE PAGE) -->
+  <div *ngIf="selectedCandidate" class="manage-modal-backdrop" (click)="closeDetail()" role="dialog" aria-modal="true" aria-labelledby="modalCandidateName">
+    <div class="manage-modal-card" (click)="$event.stopPropagation()">
+      <!-- Modal Header (Fixed at top) -->
+      <header class="manage-modal-header">
+        <div class="candidate-header-profile">
+          <div class="avatar-circle">
+            {{ selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C' }}
+          </div>
+          <div class="header-titles">
+            <div class="title-with-badges">
+              <h2 id="modalCandidateName">{{ selectedCandidate.name }}</h2>
+              <span class="badge-source-tag">
+                {{ selectedCandidate.source === 'WEBSITE_APPLICATION' ? 'Website Inbound' : 'External Outbound' }}
+              </span>
+              <span class="badge-status-tag" [ngClass]="selectedCandidate.status.toLowerCase()">
+                {{ selectedCandidate.status }}
+              </span>
+              <span class="badge-payment-tag" [ngClass]="(selectedCandidate.paymentStatus || 'Pending').toLowerCase().replace(' ', '-')">
+                {{ selectedCandidate.paymentStatus || 'Pending' }}
+              </span>
+            </div>
+            <div class="quick-contact-strip">
+              <span class="contact-pill">📧 {{ selectedCandidate.email }}</span>
+              <span class="contact-pill">📞 {{ selectedCandidate.phone }}</span>
+              <span *ngIf="selectedCandidate.location" class="contact-pill">📍 {{ selectedCandidate.location }}</span>
+              <span class="contact-pill" title="Assigned HR Recruiter">👤 {{ selectedCandidate.assignedToName ? 'HR: ' + selectedCandidate.assignedToName : 'Unassigned' }}</span>
+              <span class="id-pill">ID: {{ selectedCandidate.id }}</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeDetail()" aria-label="Close candidate details dialog">×</button>
+      </header>
+
+      <!-- Modal Body Content (Single Vertically Scrollable Container) -->
+      <div class="manage-modal-body">
+        <!-- Notification Banners -->
+        <div *ngIf="errorMessage" class="modal-alert-error" role="alert">
+          <span>⚠ {{ errorMessage }}</span>
+        </div>
+        <div *ngIf="successMessage" class="modal-alert-success" role="status">
+          <span>✓ {{ successMessage }}</span>
+        </div>
+
+        <!-- SECTION 1: Candidate Registration Profile & Information -->
+        <section class="modal-section-card">
+          <div class="section-lead-header">
+            <div class="section-title-wrap">
+              <span class="section-icon-badge">📋</span>
+              <div>
+                <h3>Registration Profile &amp; Candidate Information</h3>
+                <p>Personal background, contact details, academic qualifications, and resume documents.</p>
+              </div>
+            </div>
+            <button type="button" class="btn-edit-candidate-lead" (click)="openEditDetails()" title="Edit candidate details">
+              ✎ Edit Candidate Details
+            </button>
+          </div>
+
+          <!-- Candidate Profile Correction Requests Card -->
+          <div *ngIf="selectedCandidate.correctionRequests && selectedCandidate.correctionRequests.length > 0" class="correction-notice-box">
+            <div class="correction-box-head">
+              <span class="correction-badge-icon">⚡</span>
+              <div>
+                <h4>Candidate Profile Correction Requests</h4>
+                <p>Edits submitted by {{ selectedCandidate.name }} through the Candidate Portal.</p>
+              </div>
+            </div>
+            <div class="correction-items-list">
+              <div
+                *ngFor="let req of selectedCandidate.correctionRequests"
+                class="correction-item-row"
+                [class.pending-row]="req.status === 'Pending'"
+                [class.completed-row]="req.status === 'Completed'"
+              >
+                <div class="correction-item-top">
+                  <span class="correction-item-date">Submitted: {{ req.requestedAt | date:'medium' }}</span>
+                  <span
+                    class="correction-status-pill"
+                    [class.pill-orange]="req.status === 'Pending'"
+                    [class.pill-green]="req.status === 'Completed'"
+                  >
+                    ● {{ req.status }}
+                  </span>
+                </div>
+                <p class="correction-item-text"><strong>Requested Changes:</strong> {{ req.requestText }}</p>
+                <div class="correction-item-actions">
+                  <button
+                    *ngIf="req.status === 'Pending'"
+                    type="button"
+                    class="btn-sm-resolve"
+                    (click)="openEditDetails(req)"
+                  >
+                    ✎ Edit Details to Resolve
+                  </button>
+                  <button
+                    *ngIf="req.status === 'Pending'"
+                    type="button"
+                    class="btn-sm-complete"
+                    (click)="markCorrectionStatus(req.id, 'Completed')"
+                  >
+                    ✓ Mark as Completed
+                  </button>
+                  <button
+                    *ngIf="req.status === 'Completed'"
+                    type="button"
+                    class="btn-sm-reopen"
+                    (click)="markCorrectionStatus(req.id, 'Pending')"
+                  >
+                    ↺ Reopen as Pending
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-cards-grid">
+            <div class="profile-card">
+              <h4>Contact &amp; Personal Details</h4>
+              <div class="info-row"><span class="lbl">Email:</span><span class="val">{{ selectedCandidate.email }}</span></div>
+              <div class="info-row"><span class="lbl">Phone:</span><span class="val">{{ selectedCandidate.phone }}</span></div>
+              <div class="info-row"><span class="lbl">Date of Birth:</span><span class="val">{{ selectedCandidate.dateOfBirth || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">City / Location:</span><span class="val">{{ selectedCandidate.location || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">Street Address:</span><span class="val">{{ selectedCandidate.address || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">State:</span><span class="val">{{ selectedCandidate.state || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">PIN Code:</span><span class="val">{{ selectedCandidate.pincode || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">Assigned Recruiter:</span><span class="val">{{ selectedCandidate.assignedToName || 'Unassigned' }}</span></div>
+              <div class="info-row assign-row" *ngIf="canManagePaymentQr && hrEmployees.length > 0">
+                <span class="lbl">Assign to HR:</span>
+                <div class="assign-action-wrap">
+                  <select [(ngModel)]="assigneeHrId" class="assign-select">
+                    <option value="" disabled>-- Select HR --</option>
+                    <option *ngFor="let hr of hrEmployees" [value]="hr.id">{{ hr.name }}</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="btn-sm-assign"
+                    (click)="assignCandidate(assigneeHrId)"
+                    [disabled]="assigningCandidate || !assigneeHrId || assigneeHrId === selectedCandidate.assignedToId"
+                  >
+                    {{ assigningCandidate ? 'Assigning...' : (selectedCandidate.assignedToId ? 'Reassign' : 'Assign') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-card">
+              <h4>Academic &amp; Preference Details</h4>
+              <div class="info-row"><span class="lbl">Degree:</span><span class="val">{{ selectedCandidate.degree || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">College:</span><span class="val">{{ selectedCandidate.college || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">Year of Passing:</span><span class="val">{{ selectedCandidate.yearOfPassing || 'Not provided' }}</span></div>
+              <div class="info-row"><span class="lbl">Selected Course:</span><span class="val">{{ selectedCandidate.courseName || selectedCandidate.position || selectedCandidate.programmingLanguage || 'Not specified' }}</span></div>
+              <div class="info-row"><span class="lbl">Experience:</span><span class="val">{{ selectedCandidate.experience || 'Not specified' }}</span></div>
+              <div class="info-row"><span class="lbl">Preferred Start:</span><span class="val">{{ selectedCandidate.preferredStartDate ? (selectedCandidate.preferredStartDate | date:'mediumDate') : 'Not specified' }}</span></div>
+            </div>
+          </div>
+
+          <!-- Course / Skills if available -->
+          <div class="profile-card full-span" *ngIf="selectedCandidate.skills && selectedCandidate.skills.length > 0">
+            <h4>Course</h4>
+            <div class="tags-container">
+              <span *ngFor="let sk of selectedCandidate.skills" class="tag-badge">{{ sk }}</span>
+            </div>
+          </div>
+
+          <!-- Additional Training -->
+          <div class="profile-card full-span" *ngIf="selectedCandidate.additionalTraining && selectedCandidate.additionalTraining.length > 0">
+            <h4>Additional Training Selections</h4>
+            <div class="tags-container">
+              <span *ngFor="let tr of selectedCandidate.additionalTraining" class="tag-badge">{{ tr }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: Course Scheduling & Fee -->
+        <section class="modal-section-card">
+          <div class="section-lead-header">
+            <div class="section-title-wrap">
+              <span class="section-icon-badge">🎓</span>
+              <div>
+                <h3>Course Scheduling &amp; Fee</h3>
+                <p>Configure course title, duration, fee amounts, and payment instructions for this candidate.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="editCourseName">Course Title</label>
+              <input id="editCourseName" type="text" [(ngModel)]="editCourseName" list="courseNameDatalist" placeholder="e.g. Full Stack Development with Java & Angular" />
+              <datalist id="courseNameDatalist">
+                <option *ngFor="let opt of outboundCourseOptions" [value]="opt"></option>
+              </datalist>
+            </div>
+
+            <div class="form-field">
+              <label for="editCourseDuration">Course Duration</label>
+              <select id="editCourseDuration" [(ngModel)]="editCourseDuration">
+                <option *ngFor="let opt of durationOptions" [value]="opt">{{ opt }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="editJoiningDate">Joining Date</label>
+              <input id="editJoiningDate" type="date" [(ngModel)]="editJoiningDate" />
+            </div>
+
+            <div class="form-field">
+              <label for="editCourseStartDate">Actual Course Start Date</label>
+              <input id="editCourseStartDate" type="date" [(ngModel)]="editCourseStartDate" />
+              <span class="field-hint">Actual start date separate from candidate preference</span>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="editTotalFee">Total Course Fee (₹)</label>
+              <input id="editTotalFee" type="number" min="0" [(ngModel)]="editTotalFee" />
+            </div>
+
+            <div class="form-field balance-card">
+              <label>Remaining Balance</label>
+              <div class="balance-display-value" [class.zero-balance]="remainingBalance === 0">
+                ₹{{ remainingBalance | number }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label for="editPaymentStatus">Overall Payment Status</label>
+              <select id="editPaymentStatus" [(ngModel)]="editPaymentStatus">
+                <option *ngFor="let opt of paymentStatusOptions" [value]="opt">{{ opt }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="editPaymentInstructions">Payment Instructions &amp; Bank Notes</label>
+            <textarea
+              id="editPaymentInstructions"
+              rows="3"
+              [(ngModel)]="editPaymentInstructions"
+              placeholder="e.g. Please transfer fees using UPI or Bank NEFT before the batch commencement date."
+            ></textarea>
+          </div>
+        </section>
+
+        <!-- SECTION 3: Official Payment QR Code & Direct Link -->
+        <section class="modal-section-card">
+          <div class="section-lead-header">
+            <div class="section-title-wrap">
+              <span class="section-icon-badge">📱</span>
+              <div>
+                <h3>Official Payment QR Code &amp; Secure Payment Link</h3>
+                <p *ngIf="canManagePaymentQr">View or update the payment QR code and share the candidate-specific payment link.</p>
+                <p *ngIf="!canManagePaymentQr">View the saved payment QR code and share the candidate-specific payment link.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email feedback alerts inside payment section -->
+          <div *ngIf="emailPaymentLinkSuccess" class="alert-box success">
+            ✓ {{ emailPaymentLinkSuccess }}
+          </div>
+          <div *ngIf="emailPaymentLinkError" class="alert-box error">
+            ⚠ {{ emailPaymentLinkError }}
+          </div>
+
+          <div class="qr-management-card">
+            <!-- Compact, Fixed-Size QR Preview Area -->
+            <div class="qr-preview-area">
+              <div *ngIf="qrCodePreview" class="qr-image-wrapper">
+                <img [src]="qrCodePreview" alt="Official TVK Payment QR Code" class="qr-image" />
+                <span class="qr-status-tag">✓ Active QR Code</span>
+              </div>
+              <div *ngIf="!qrCodePreview" class="qr-placeholder">
+                <span class="qr-placeholder-icon">📱</span>
+                <span class="qr-placeholder-text">No QR Code</span>
+                <span class="qr-subhint" *ngIf="canManagePaymentQr">Upload PNG or JPG</span>
+              </div>
+            </div>
+
+            <!-- QR Actions & Sharing -->
+            <div class="qr-actions-area">
+              <div class="file-picker-group" *ngIf="canManagePaymentQr">
+                <input
+                  #qrFileInput
+                  type="file"
+                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                  (change)="onQrFileSelected($event)"
+                  class="hidden-file-input"
+                />
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  (click)="qrFileInput.click()"
+                  [disabled]="uploadingQr"
+                >
+                  {{ uploadingQr ? 'Uploading QR Code...' : (qrCodePreview ? 'Replace QR Code Image' : 'Upload Official QR Code') }}
+                </button>
+                <span *ngIf="qrUploadError" class="field-error">{{ qrUploadError }}</span>
+              </div>
+
+              <!-- Secure Payment Link & Email Sharing Card -->
+              <div class="link-sharing-card">
+                <h4>Candidate-Specific Payment Link</h4>
+                <p>Candidates can open this link on mobile without logging in, scan the QR code, and submit proof.</p>
+                <div class="payment-link-actions-row">
+                  <button
+                    type="button"
+                    class="btn-share-link"
+                    (click)="copyPaymentLink()"
+                  >
+                    {{ copiedPaymentLink ? '✓ Secure Payment Link Copied to Clipboard!' : '📋 Copy Secure Payment Link' }}
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-email-link"
+                    (click)="sendPaymentLinkEmail()"
+                    [disabled]="sendingPaymentEmail"
+                  >
+                    {{ sendingPaymentEmail ? '✉ Sending Email...' : '📧 Send Payment Link via Email' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save Course & Fee Button Placed After Payment Section -->
+          <div class="form-actions-bar">
+            <button
+              type="button"
+              class="btn-primary-lg"
+              (click)="saveCourseAndPayment()"
+              [disabled]="savingCourse"
+            >
+              {{ savingCourse ? 'Saving Course &amp; Fee...' : '💾 Save Course &amp; Fee' }}
+            </button>
+          </div>
+        </section>
+
+        <!-- SECTION 4: Candidate Portal Account Creation -->
+        <section id="candidatePortalAccountSection" class="modal-section-card">
+          <div class="section-lead-header">
+            <div class="section-title-wrap">
+              <span class="section-icon-badge">🔑</span>
+              <div>
+                <h3>Candidate Portal Account</h3>
+                <p>Create login credentials for the candidate after enrollment approval, or reset an existing account password.</p>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="accountSuccess" class="alert-box success">
+            ✓ {{ accountSuccess }}
+          </div>
+
+          <div *ngIf="selectedCandidate.accountCreated" class="account-card active-account">
+            <div class="acc-badge-row">
+              <span class="badge-status-pill verified">✓ Account Active</span>
+              <span class="candidate-id-badge">Candidate ID: <code>{{ selectedCandidate.id }}</code> (Read-only)</span>
+            </div>
+
+            <div class="account-edit-intro">
+              <p>View and edit the candidate's portal username and assign a new password of your choice. Updated credentials will be emailed to <strong>{{ selectedCandidate.email }}</strong>.</p>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="editAccountUsernameInput">Portal Username *</label>
+                <input
+                  id="editAccountUsernameInput"
+                  type="text"
+                  [(ngModel)]="accountUsernameInput"
+                  placeholder="e.g. candidate_username"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="oldPasswordDisplay">Old / Current Password</label>
+                <div class="pw-field-wrap">
+                  <input
+                    id="oldPasswordDisplay"
+                    [type]="showOldPassword ? 'text' : 'password'"
+                    [value]="getOldPasswordDisplay()"
+                    readonly
+                    class="readonly-input"
+                    title="Current or previous password"
+                  />
+                  <button
+                    type="button"
+                    class="btn-toggle-field-pw"
+                    (click)="toggleShowOldPassword()"
+                    [title]="showOldPassword ? 'Hide old password' : 'Show old password'"
+                  >
+                    {{ showOldPassword ? '👁' : '👁‍🗨' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="accountNewPasswordInput">New Password *</label>
+                <div class="pw-field-wrap">
+                  <input
+                    id="accountNewPasswordInput"
+                    [type]="showAccountPassword ? 'text' : 'password'"
+                    [(ngModel)]="accountNewPasswordInput"
+                    placeholder="Min 6 characters"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="btn-toggle-field-pw"
+                    (click)="showAccountPassword = !showAccountPassword"
+                    [title]="showAccountPassword ? 'Hide password' : 'Show password'"
+                  >
+                    {{ showAccountPassword ? '👁' : '👁‍🗨' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="accountConfirmPasswordInput">Confirm Password *</label>
+                <input
+                  id="accountConfirmPasswordInput"
+                  [type]="showAccountPassword ? 'text' : 'password'"
+                  [(ngModel)]="accountConfirmPasswordInput"
+                  placeholder="Re-enter new password"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="password-security-hint">
+              <span class="hint-icon">🔒</span>
+              <span>Passwords are securely hashed with bcrypt for authentication. Updating credentials will save the new password and email it to the candidate.</span>
+            </div>
+
+            <div class="offer-letter-option-row">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="attachOfferLetter" name="attachOfferLetterActive" />
+                <span>Attach official Offer Letter / Internship Certificate in email</span>
+              </label>
+              <div class="offer-letter-btns-group">
+                <button
+                  type="button"
+                  class="btn-secondary-sm"
+                  (click)="previewOfferLetter()"
+                  [disabled]="previewingOfferLetter"
+                  title="Preview the generated Offer Letter"
+                >
+                  {{ previewingOfferLetter ? 'Loading...' : '👁 Preview Offer Letter' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary-sm"
+                  (click)="downloadOfferLetter()"
+                  [disabled]="downloadingOfferLetter"
+                  title="Download the offer letter image"
+                >
+                  {{ downloadingOfferLetter ? 'Downloading...' : '📥 Download Offer Letter (Image)' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="acc-actions">
+              <button
+                type="button"
+                class="btn-primary-lg"
+                (click)="saveAndEmailCredentials()"
+                [disabled]="savingCredentials || !accountUsernameInput.trim() || !accountNewPasswordInput || accountNewPasswordInput.length < 6 || accountNewPasswordInput !== accountConfirmPasswordInput"
+              >
+                <span *ngIf="savingCredentials" class="btn-spinner"></span>
+                {{ savingCredentials ? 'Saving &amp; Emailing Credentials...' : '💾 Save &amp; Email Updated Credentials' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!selectedCandidate.accountCreated" class="account-card create-account">
+            <h4>Generate Candidate Account Credentials</h4>
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="accountUsernameInput">Candidate Username *</label>
+                <input id="accountUsernameInput" type="text" [(ngModel)]="accountUsernameInput" />
+              </div>
+              <div class="form-field">
+                <label for="accountTempPasswordInput">Generated Temporary Password *</label>
+                <input id="accountTempPasswordInput" type="text" [(ngModel)]="accountTempPasswordInput" />
+              </div>
+            </div>
+
+            <div class="offer-letter-option-row">
+              <label class="checkbox-label">
+                <input type="checkbox" [(ngModel)]="attachOfferLetter" name="attachOfferLetterCreate" />
+                <span>Attach official Offer Letter / Internship Certificate in credentials email</span>
+              </label>
+              <div class="offer-letter-btns-group">
+                <button
+                  type="button"
+                  class="btn-secondary-sm"
+                  (click)="previewOfferLetter()"
+                  [disabled]="previewingOfferLetter"
+                  title="Preview the generated Offer Letter"
+                >
+                  {{ previewingOfferLetter ? 'Loading...' : '👁 Preview Offer Letter' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary-sm"
+                  (click)="downloadOfferLetter()"
+                  [disabled]="downloadingOfferLetter"
+                  title="Download the offer letter image"
+                >
+                  {{ downloadingOfferLetter ? 'Downloading...' : '📥 Download Offer Letter (Image)' }}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="btn-primary-lg"
+              (click)="createAccount()"
+              [disabled]="creatingAccount || !accountUsernameInput.trim() || !accountTempPasswordInput.trim()"
+            >
+              {{ creatingAccount ? 'Creating Account & Sending Email...' : '🚀 Create Candidate Account & Email Credentials' }}
+            </button>
+          </div>
+        </section>
+
+        <!-- SECTION 5: Course Completion & Certificate -->
+        <section class="modal-section-card">
+          <div class="section-lead-header">
+            <div class="section-title-wrap">
+              <span class="section-icon-badge">📜</span>
+              <div>
+                <h3>Course Completion &amp; Certificate Management</h3>
+                <p>Mark eligible courses as completed and generate the official TVK Technologies completion certificate.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="cert-management-card">
+            <label class="completion-checkbox-row">
+              <input type="checkbox" [(ngModel)]="courseCompletedCheck" (change)="saveCourseCompletion()" />
+              <span class="check-title">Mark Course as Completed</span>
+            </label>
+
+            <div *ngIf="courseCompletedCheck" class="completion-form-body">
+              <div class="form-field">
+                <label for="completionDateInput">Completion Date *</label>
+                <input id="completionDateInput" type="date" [(ngModel)]="completionDateInput" (change)="saveCourseCompletion()" />
+              </div>
+
+              <div class="cert-status-actions-box">
+                <div class="cert-info-line">
+                  <strong>Certificate Status:</strong>
+                  <span class="badge-status-pill" [ngClass]="selectedCandidate.certificateStatus === 'ISSUED' ? 'verified' : (selectedCandidate.certificateStatus === 'REVOKED' ? 'rejected' : 'pending')">
+                    {{ selectedCandidate.certificateStatus === 'ISSUED' ? 'Issued (' + selectedCandidate.certificateId + ')' : (selectedCandidate.certificateStatus === 'REVOKED' ? 'Revoked (' + selectedCandidate.certificateId + ')' : 'Not Issued') }}
+                  </span>
+                </div>
+
+                <div class="cert-btns-row">
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    (click)="generateCertificate()"
+                    [disabled]="generatingCert"
+                  >
+                    {{ generatingCert ? 'Generating...' : (selectedCandidate.certificateStatus === 'ISSUED' ? 'Regenerate Certificate' : (selectedCandidate.certificateStatus === 'REVOKED' ? 'Reissue Certificate' : 'Generate Certificate')) }}
+                  </button>
+
+                  <button
+                    *ngIf="selectedCandidate.certificateStatus === 'ISSUED'"
+                    type="button"
+                    class="btn-secondary"
+                    (click)="previewCertificate()"
+                  >
+                    👁 Preview Certificate
+                  </button>
+
+                  <button
+                    *ngIf="selectedCandidate.certificateStatus === 'ISSUED'"
+                    type="button"
+                    class="btn-secondary"
+                    (click)="downloadCandidateCertificate()"
+                    [disabled]="downloadingCert"
+                  >
+                    {{ downloadingCert ? 'Downloading...' : '📥 Download Certificate (Image)' }}
+                  </button>
+
+                  <button
+                    *ngIf="selectedCandidate.certificateStatus === 'ISSUED'"
+                    type="button"
+                    class="btn-danger"
+                    (click)="revokeCandidateCertificate()"
+                  >
+                    🚫 Revoke Certificate
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Modal Footer (Fixed at bottom) -->
+      <footer class="manage-modal-footer">
+        <div class="footer-left-info">
+          <span>Editing candidate: <strong>{{ selectedCandidate.name }}</strong> (ID: {{ selectedCandidate.id }})</span>
+        </div>
+        <div class="footer-right-actions">
+          <button type="button" class="btn-modal-close" (click)="closeDetail()">
+            Done / Close
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Add Outbound Candidate Modal -->
+  <div *ngIf="showOutboundModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Add External Resume (Outbound)</h3>
+          <p *ngIf="!outboundEntryMethod">Choose how you received this candidate resume.</p>
+          <p *ngIf="outboundEntryMethod === 'MANUAL_TYPING'">Enter candidate and resume details manually.</p>
+          <p *ngIf="outboundEntryMethod === 'RECEIVED_FROM_EMAIL'">Enter candidate details and attach the resume received by email.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddOutboundModal()" [disabled]="savingOutbound">×</button>
+      </header>
+
+      <div *ngIf="!outboundEntryMethod" class="outbound-method-options">
+        <button type="button" class="outbound-method-card" (click)="selectOutboundEntryMethod('MANUAL_TYPING')">
+          <span class="outbound-method-icon" aria-hidden="true">⌨</span>
+          <span class="outbound-method-title">Manual Typing (Outbound)</span>
+          <span class="outbound-method-description">Enter candidate details and save them directly to the outbound database.</span>
+        </button>
+        <button type="button" class="outbound-method-card" (click)="selectOutboundEntryMethod('RECEIVED_FROM_EMAIL')">
+          <span class="outbound-method-icon" aria-hidden="true">✉</span>
+          <span class="outbound-method-title">Received from Email (Outbound)</span>
+          <span class="outbound-method-description">Enter the candidate details and attach the resume received by email.</span>
+        </button>
+      </div>
+
+      <form *ngIf="outboundEntryMethod" (ngSubmit)="submitOutboundCandidate()" class="modal-form">
+        <button type="button" class="btn-change-outbound-method" (click)="changeOutboundEntryMethod()">
+          ← Change entry method
+        </button>
+
+        <div *ngIf="errorMessage" class="modal-alert-error" role="alert">
+          ⚠ {{ errorMessage }}
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="outboundName">Candidate Full Name *</label>
+            <input id="outboundName" type="text" [(ngModel)]="outboundName" name="outboundName" required />
+          </div>
+          <div class="form-field">
+            <label for="outboundEmail">Email Address *</label>
+            <input id="outboundEmail" type="email" [(ngModel)]="outboundEmail" name="outboundEmail" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="outboundPhone">Phone Number *</label>
+            <input id="outboundPhone" type="text" [(ngModel)]="outboundPhone" name="outboundPhone" required />
+          </div>
+          <div class="form-field">
+            <label for="outboundPosition">Target Course / Position *</label>
+            <select id="outboundPosition" [(ngModel)]="outboundPosition" name="outboundPosition" required>
+              <option value="" disabled>-- Select a course --</option>
+              <option *ngFor="let course of outboundCourseOptions" [value]="course">{{ course }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="outboundExperience">Experience</label>
+            <input id="outboundExperience" type="text" [(ngModel)]="outboundExperience" name="outboundExperience" placeholder="e.g. Fresh Graduate / 1 Year" />
+          </div>
+          <div class="form-field">
+            <label for="outboundLocation">Location / City</label>
+            <input id="outboundLocation" type="text" [(ngModel)]="outboundLocation" name="outboundLocation" placeholder="e.g. Chennai" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="outboundSkills">Key Skills (comma-separated)</label>
+          <input id="outboundSkills" type="text" [(ngModel)]="outboundSkills" name="outboundSkills" placeholder="e.g. Java, Spring Boot, React" />
+        </div>
+
+        <div *ngIf="outboundEntryMethod === 'RECEIVED_FROM_EMAIL'" class="form-field">
+          <label for="outboundResume">Attach Resume File (PDF, DOC, DOCX — Max 1 MB) *</label>
+          <input id="outboundResume" type="file" (change)="onOutboundResumeSelected($event)" accept=".pdf,.doc,.docx" required />
+          <span *ngIf="outboundFileError" class="field-error">{{ outboundFileError }}</span>
+        </div>
+
+        <div class="form-field">
+          <label for="outboundNotes">Notes &amp; Source Details</label>
+          <textarea id="outboundNotes" rows="2" [(ngModel)]="outboundNotes" name="outboundNotes" placeholder="e.g. Received via email from campus referral"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeAddOutboundModal()" [disabled]="savingOutbound">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="savingOutbound">
+            {{ savingOutbound ? 'Saving Candidate...' : 'Save External Resume' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Verify Payment Modal -->
+  <div *ngIf="verifyingPayment" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Verify Payment Submission</h3>
+          <p>Confirm the verified amount received to approve candidate payment.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeVerifyModal()">×</button>
+      </header>
+
+      <div *ngIf="verifyingPaymentError" class="modal-alert-error">
+        <span>⚠ {{ verifyingPaymentError }}</span>
+      </div>
+
+      <form (ngSubmit)="submitVerify()" class="modal-form">
+        <div class="form-field">
+          <label for="verifiedAmountInput">Verified Amount Received (₹) *</label>
+          <input
+            id="verifiedAmountInput"
+            type="number"
+            min="1"
+            [(ngModel)]="verifiedAmountInput"
+            name="verifiedAmountInput"
+            required
+            placeholder="Enter verified amount"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="verificationNotes">Verification Notes (Optional)</label>
+          <input
+            id="verificationNotes"
+            type="text"
+            [(ngModel)]="verificationNotes"
+            name="verificationNotes"
+            placeholder="e.g. Bank statement verified on 27 Oct"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeVerifyModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-primary"
+            (click)="submitVerify()"
+            [disabled]="submittingVerification || !verifiedAmountInput || verifiedAmountInput <= 0"
+          >
+            {{ submittingVerification ? 'Confirming...' : 'Confirm' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reject Payment Modal -->
+  <div *ngIf="rejectingPayment" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Reject Payment Submission</h3>
+          <p>State the reason for payment rejection (e.g. invalid transaction ID or funds not received).</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeRejectModal()">×</button>
+      </header>
+
+      <div *ngIf="rejectingPaymentError" class="modal-alert-error">
+        <span>⚠ {{ rejectingPaymentError }}</span>
+      </div>
+
+      <form (ngSubmit)="submitReject()" class="modal-form">
+        <div class="form-field">
+          <label for="rejectionReasonInput">Rejection Reason *</label>
+          <textarea
+            id="rejectionReasonInput"
+            rows="3"
+            [(ngModel)]="rejectionReasonInput"
+            name="rejectionReasonInput"
+            placeholder="Describe reason for rejection..."
+            required
+          ></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeRejectModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-danger"
+            (click)="submitReject()"
+            [disabled]="submittingRejection || !rejectionReasonInput.trim()"
+          >
+            {{ submittingRejection ? 'Rejecting...' : 'Confirm Rejection' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Certificate Preview Modal -->
+  <div *ngIf="previewPdfUrl" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card pdf-preview-card">
+      <header class="modal-header">
+        <h3>Official Certificate Preview</h3>
+        <button type="button" class="btn-close-modal" (click)="closePreview()">×</button>
+      </header>
+      <div class="pdf-frame-wrapper" style="text-align: center; background: #1e293b; padding: 12px; border-radius: 6px; overflow: auto; max-height: 75vh;">
+        <img
+          [src]="previewPdfUrl"
+          alt="Certificate Preview"
+          style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: inline-block;"
+        />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closePreview()">Close</button>
+        <button type="button" class="btn-primary" (click)="downloadCandidateCertificate()" [disabled]="downloadingCert">
+          {{ downloadingCert ? 'Downloading...' : '📥 Download Certificate (Image)' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offer Letter Preview Modal -->
+  <div *ngIf="showOfferLetterPreview" class="modal-backdrop" role="dialog" aria-modal="true" style="z-index: 10050;">
+    <div class="modal-card pdf-preview-card">
+      <header class="modal-header">
+        <div>
+          <h3>Official Offer Letter Preview</h3>
+          <p *ngIf="selectedCandidate">Corporate offer letter for {{ selectedCandidate.name }} (ID: {{ selectedCandidate.id }})</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeOfferLetterPreview()">×</button>
+      </header>
+      <div *ngIf="previewingOfferLetter" class="preview-loading-spinner" style="text-align: center; padding: 48px; color: #1e293b;">
+        <div class="spinner" style="margin-bottom: 12px;"></div>
+        <p style="margin: 0; font-weight: 500; font-size: 0.95rem;">Generating high-resolution offer letter preview...</p>
+      </div>
+      <div *ngIf="offerLetterPreviewError" class="modal-alert-error" style="margin: 1rem 0; padding: 1rem; border-radius: 8px;">
+        <span>⚠ {{ offerLetterPreviewError }}</span>
+        <button type="button" class="btn-secondary-sm" (click)="previewOfferLetter()" style="margin-left: auto;">Retry</button>
+      </div>
+      <div *ngIf="offerLetterPreviewUrl && !previewingOfferLetter" class="pdf-frame-wrapper" style="text-align: center; background: #0b1f3a; padding: 14px; border-radius: 6px; overflow: auto; max-height: 75vh; height: auto;">
+        <img
+          [src]="offerLetterPreviewUrl"
+          alt="Offer Letter Preview"
+          style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); display: inline-block; background: #ffffff;"
+        />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeOfferLetterPreview()">Close</button>
+        <button
+          *ngIf="rawOfferLetterPreviewUrl"
+          type="button"
+          class="btn-secondary"
+          (click)="openOfferLetterInNewTab()"
+          title="Open preview image in a new browser tab"
+        >
+          🔍 View Full Screen
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="downloadOfferLetter()"
+          [disabled]="downloadingOfferLetter"
+        >
+          {{ downloadingOfferLetter ? 'Downloading...' : '📥 Download Offer Letter (Image)' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Candidate Details Modal -->
+  <div *ngIf="showEditDetailsModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card edit-candidate-modal" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h3>Edit Candidate Details</h3>
+          <p>Update personal, academic, and registration details in the database.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeEditDetails()">×</button>
+      </header>
+
+      <div *ngIf="editCandidateError" class="modal-alert-error" role="alert">
+        <span>⚠ {{ editCandidateError }}</span>
+      </div>
+
+      <form (ngSubmit)="saveCandidateDetails()" class="edit-candidate-form">
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="extEditName">Full Name *</label>
+            <input id="extEditName" type="text" [(ngModel)]="editCandidateName" name="editCandidateName" required />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditEmail">Email Address *</label>
+            <input id="extEditEmail" type="email" [(ngModel)]="editCandidateEmail" name="editCandidateEmail" required />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditPhone">Phone Number *</label>
+            <input id="extEditPhone" type="text" [(ngModel)]="editCandidatePhone" name="editCandidatePhone" required />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditPosition">Target Course / Position</label>
+            <input id="extEditPosition" type="text" [(ngModel)]="editCandidatePosition" name="editCandidatePosition" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditExperience">Experience</label>
+            <input id="extEditExperience" type="text" [(ngModel)]="editCandidateExperience" name="editCandidateExperience" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditLocation">City / Location</label>
+            <input id="extEditLocation" type="text" [(ngModel)]="editCandidateLocation" name="editCandidateLocation" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditDob">Date of Birth</label>
+            <input id="extEditDob" type="text" [(ngModel)]="editCandidateDob" name="editCandidateDob" placeholder="YYYY-MM-DD" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditDegree">Degree / Qualification</label>
+            <input id="extEditDegree" type="text" [(ngModel)]="editCandidateDegree" name="editCandidateDegree" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditCollege">College / Institute</label>
+            <input id="extEditCollege" type="text" [(ngModel)]="editCandidateCollege" name="editCandidateCollege" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditYop">Year of Passing</label>
+            <input id="extEditYop" type="text" [(ngModel)]="editCandidateYop" name="editCandidateYop" />
+          </div>
+
+          <div class="form-field full-span">
+            <label for="extEditAddress">Residential Street Address</label>
+            <input id="extEditAddress" type="text" [(ngModel)]="editCandidateAddress" name="editCandidateAddress" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditState">State</label>
+            <input id="extEditState" type="text" [(ngModel)]="editCandidateState" name="editCandidateState" />
+          </div>
+
+          <div class="form-field">
+            <label for="extEditPincode">PIN Code</label>
+            <input id="extEditPincode" type="text" [(ngModel)]="editCandidatePincode" name="editCandidatePincode" />
+          </div>
+
+          <div class="form-field full-span">
+            <label for="extEditSkills">Skills (comma-separated)</label>
+            <input id="extEditSkills" type="text" [(ngModel)]="editCandidateSkills" name="editCandidateSkills" placeholder="e.g. Java, Python, React" />
+          </div>
+
+          <div class="form-field full-span">
+            <label for="extEditNotes">Internal Staff Notes</label>
+            <textarea id="extEditNotes" rows="3" [(ngModel)]="editCandidateNotes" name="editCandidateNotes"></textarea>
+          </div>
+        </div>
+
+        <div *ngIf="pendingCorrectionRequests.length > 0" class="correction-resolve-option">
+          <label class="checkbox-container">
+            <input type="checkbox" [(ngModel)]="markCorrectionCompletedOnSave" name="markCorrectionCompletedOnSave" />
+            <span>Mark pending correction request as <strong>Completed</strong> upon saving</span>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeEditDetails()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="savingCandidateDetails">
+            {{ savingCandidateDetails ? 'Saving Changes...' : 'Save Candidate Details' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

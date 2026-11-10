@@ -1,0 +1,153 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">CANDIDATE DATABASE</span>
+
+    <div class="title-row">
+      <div>
+        <h2>Archived Candidates</h2>
+        <p>
+          Review candidates that have been removed from the active recruitment pipeline.
+        </p>
+      </div>
+
+      <a
+        class="back-button"
+        routerLink="/candidates"
+      >
+        Back to Candidates
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div *ngIf="loading" class="load-state" role="status">
+    Loading archived candidates...
+  </div>
+  <div *ngIf="loadError" class="error-state" role="alert">
+    <span>{{ loadError }}</span>
+    <button type="button" (click)="loadCandidates()">Retry</button>
+  </div>
+  <div *ngIf="deleteError" class="error-state" role="alert">
+    {{ deleteError }}
+  </div>
+
+  <div class="toolbar">
+    <input
+      [(ngModel)]="search"
+      placeholder="Search name, phone, email or position..."
+    />
+
+    <div class="count">
+      {{ filtered.length }} archived
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Position</th>
+          <th>Contact</th>
+          <th>Previously Assigned To</th>
+          <th>Archived</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr
+          *ngFor="let candidate of filtered"
+        >
+          <td>
+            <a
+              class="candidate-name"
+              [routerLink]="[
+                '/candidates',
+                candidate.id
+              ]"
+            >
+              {{ candidate.name || "Unnamed candidate" }}
+            </a>
+
+            <span>
+              {{ candidate.location || "Location not set" }}
+            </span>
+          </td>
+
+          <td>
+            {{ candidate.position || "—" }}
+          </td>
+
+          <td>
+            <a
+              class="phone"
+              [href]="'tel:' + candidate.phone"
+            >
+              {{ candidate.phone || "No phone" }}
+            </a>
+
+            <span>
+              {{ candidate.email || "No email" }}
+            </span>
+          </td>
+
+          <td>
+            {{ candidate.assignedToName || "Unassigned" }}
+          </td>
+
+          <td>
+            <span class="status archived">
+              ARCHIVED
+            </span>
+          </td>
+
+          <td>
+            <div class="actions">
+              <a
+                class="view"
+                [routerLink]="[
+                  '/candidates',
+                  candidate.id
+                ]"
+              >
+                View
+              </a>
+
+              <button
+                class="restore"
+                type="button"
+                (click)="restore(candidate)"
+              >
+                Restore
+              </button>
+
+              <button
+                class="delete"
+                type="button"
+                [disabled]="deletingId === candidate.id"
+                (click)="permanentDelete(candidate)"
+              >
+                {{
+                  deletingId === candidate.id
+                    ? "Deleting..."
+                    : "Delete Permanently"
+                }}
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="!filtered.length">
+          <td
+            colspan="6"
+            class="empty"
+          >
+            No archived candidates found.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

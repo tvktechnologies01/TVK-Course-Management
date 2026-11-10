@@ -1,0 +1,162 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">CANDIDATE DATABASE</span>
+
+    <div class="title-row">
+      <div>
+        <h2>Candidates</h2>
+        <p>
+          Search, filter and manage every candidate in the recruitment pipeline.
+        </p>
+      </div>
+
+      <a
+        class="archive-link"
+        routerLink="/candidates/archived"
+      >
+        Archived Candidates
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="load-state" *ngIf="loading && !candidates.length" role="status">
+    Loading candidates...
+  </div>
+  <div class="load-state error-state" *ngIf="errorMessage" role="alert">
+    <span>{{ errorMessage }}</span>
+    <button type="button" (click)="loadCandidates()">Retry</button>
+  </div>
+
+  <div class="filters">
+    <input
+      [(ngModel)]="search"
+      placeholder="Search name, phone, email or position..."
+    />
+
+    <select [(ngModel)]="status">
+      <option value="ALL">All statuses</option>
+
+      <option
+        *ngFor="let item of statuses"
+        [value]="item"
+      >
+        {{ label(item) }}
+      </option>
+    </select>
+
+    <select [(ngModel)]="assignee">
+      <option value="ALL">All HR</option>
+
+      <option
+        *ngFor="let employee of employees"
+        [value]="employee.id"
+      >
+        {{ employee.name }}
+      </option>
+    </select>
+
+    <select [(ngModel)]="position">
+      <option value="ALL">All positions</option>
+
+      <option
+        *ngFor="let item of positions"
+        [value]="item"
+      >
+        {{ item }}
+      </option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Position</th>
+          <th>Contact</th>
+          <th>Assigned To</th>
+          <th>Status</th>
+          <th>Added</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let candidate of filtered">
+          <td>
+            <a
+              class="candidate-name"
+              [routerLink]="[
+                '/candidates',
+                candidate.id
+              ]"
+            >
+              {{ candidate.name || 'Unnamed candidate' }}
+            </a>
+
+            <span>
+              {{ candidate.location || 'Location not set' }}
+            </span>
+          </td>
+
+          <td>
+            {{ candidate.position || '—' }}
+          </td>
+
+          <td>
+            <a
+              class="phone"
+              [href]="'tel:' + candidate.phone"
+            >
+              {{ candidate.phone || 'No phone' }}
+            </a>
+
+            <span>
+              {{ candidate.email || 'No email' }}
+            </span>
+          </td>
+
+          <td>
+            {{ candidate.assignedToName || 'Unassigned' }}
+          </td>
+
+          <td>
+            <span
+              class="status"
+              [class]="candidate.status.toLowerCase()"
+            >
+              {{ label(candidate.status) }}
+            </span>
+          </td>
+
+          <td>
+            {{ candidate.createdAt | date:'dd MMM yyyy' }}
+          </td>
+
+          <td>
+            <a
+              class="view"
+              [routerLink]="[
+                '/candidates',
+                candidate.id
+              ]"
+            >
+              View
+            </a>
+          </td>
+        </tr>
+
+        <tr *ngIf="!filtered.length">
+          <td
+            colspan="7"
+            class="empty"
+          >
+            No candidates match the selected filters.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

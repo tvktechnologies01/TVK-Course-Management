@@ -1,0 +1,152 @@
+<div class="verify-page">
+  <header class="verify-header">
+    <div class="header-content">
+      <div class="brand">
+        <span class="brand-logo">TVK</span>
+        <div>
+          <h1>TVK Technologies Edu Private Limited</h1>
+          <p class="tagline">Official Certificate Verification Portal</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="verify-main">
+    <div class="search-card">
+      <h2>Verify Credential Authenticity</h2>
+      <p>Enter the Certificate ID found at the bottom of the issued certificate or scanned from the QR code.</p>
+
+      <form (ngSubmit)="onSubmitSearch()" class="search-form">
+        <div class="search-box">
+          <input
+            type="text"
+            [(ngModel)]="searchId"
+            name="searchId"
+            placeholder="e.g. CERT-2026-6FHY8"
+            required
+            autocomplete="off"
+          />
+          <button type="submit" [disabled]="loading || !searchId.trim()">
+            {{ loading ? "Verifying..." : "Verify Certificate" }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="state-card loading-card">
+      <div class="spinner"></div>
+      <p>Consulting official academic records...</p>
+    </div>
+
+    <!-- Error / Not Found State -->
+    <div *ngIf="!loading && error && hasSearched" class="state-card error-card">
+      <div class="icon-circle error-circle">✕</div>
+      <h3>Certificate Not Found</h3>
+      <p class="error-desc">{{ error }}</p>
+      <p class="sub-help">Please double check the Certificate ID and try again, or contact TVK Technologies HR for assistance.</p>
+    </div>
+
+    <!-- Verified Authentic State -->
+    <div *ngIf="!loading && result && result.status === 'AUTHENTIC'" class="result-card authentic-card">
+      <div class="status-banner authentic-banner">
+        <div class="badge-icon">✓</div>
+        <div>
+          <h3>Verified Authentic Certificate</h3>
+          <p>This credential has been officially issued by TVK Technologies Edu Private Limited.</p>
+        </div>
+      </div>
+
+      <div class="cert-details-grid">
+        <div class="detail-item">
+          <label>Recipient Name</label>
+          <div class="value recipient-name">{{ result.candidateName }}</div>
+        </div>
+
+        <div class="detail-item">
+          <label>Course Curriculum</label>
+          <div class="value course-title">{{ result.courseName }}</div>
+        </div>
+
+        <div class="detail-item">
+          <label>Certificate ID</label>
+          <div class="value cert-id-badge">{{ result.certificateId }}</div>
+        </div>
+
+        <div class="detail-item" *ngIf="result.courseDuration">
+          <label>Program Duration</label>
+          <div class="value">{{ result.courseDuration }}</div>
+        </div>
+
+        <div class="detail-item" *ngIf="result.completionDate">
+          <label>Completion Date</label>
+          <div class="value">{{ result.completionDate }}</div>
+        </div>
+
+        <div class="detail-item" *ngIf="result.issuedAt">
+          <label>Date of Issuance</label>
+          <div class="value">{{ result.issuedAt | date:'longDate' }}</div>
+        </div>
+
+        <div class="detail-item" *ngIf="result.signatory">
+          <label>Authorized Signatory</label>
+          <div class="value">{{ result.signatory }}</div>
+        </div>
+
+        <div class="detail-item">
+          <label>Issuing Institution</label>
+          <div class="value">{{ result.issuer || "TVK Technologies Edu Private Limited" }}</div>
+        </div>
+      </div>
+
+      <div class="security-footer">
+        <div class="security-seal">
+          <span>🔒 Tamper-Proof Official Record</span>
+          <small>ISO 9001:2015 Certified Educational Institution</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revoked State -->
+    <div *ngIf="!loading && result && result.status === 'REVOKED'" class="result-card revoked-card">
+      <div class="status-banner revoked-banner">
+        <div class="badge-icon">⚠</div>
+        <div>
+          <h3>Certificate Revoked</h3>
+          <p>This certificate was invalidated and is no longer recognized as an active credential.</p>
+        </div>
+      </div>
+
+      <div class="cert-details-grid">
+        <div class="detail-item">
+          <label>Recipient Name</label>
+          <div class="value">{{ result.candidateName }}</div>
+        </div>
+
+        <div class="detail-item">
+          <label>Course</label>
+          <div class="value">{{ result.courseName }}</div>
+        </div>
+
+        <div class="detail-item">
+          <label>Certificate ID</label>
+          <div class="value cert-id-badge strike">{{ result.certificateId }}</div>
+        </div>
+
+        <div class="detail-item" *ngIf="result.revokedAt">
+          <label>Revocation Date</label>
+          <div class="value revoked-highlight">{{ result.revokedAt | date:'mediumDate' }}</div>
+        </div>
+
+        <div class="detail-item full-width" *ngIf="result.revocationReason">
+          <label>Reason for Revocation</label>
+          <div class="value reason-box">{{ result.revocationReason }}</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="verify-page-footer">
+    <p>© {{ result?.issuedAt ? (result?.issuedAt | date:'yyyy') : '2026' }} TVK Technologies Edu Private Limited. All rights reserved.</p>
+  </footer>
+</div>

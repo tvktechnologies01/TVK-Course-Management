@@ -1,0 +1,554 @@
+<div class="registration-page">
+  <div class="registration-container">
+
+    <!-- Top Brand Header -->
+    <header class="portal-header">
+      <div class="brand-badge">TVK</div>
+      <div class="header-titles">
+        <span class="institute-tag">TVK TECHNOLOGIES</span>
+        <h1>Candidate Registration</h1>
+        <p class="subtitle">Premier IT Training, Internship & Placement Institute</p>
+      </div>
+    </header>
+
+    <!-- Success Message Displayed Only After Submission -->
+    <section *ngIf="submittedSuccessfully" class="success-card" role="alert">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h2>Registration Submitted Successfully!</h2>
+      <p class="success-lead">
+        Thank you, <strong>{{ registeredCandidateName }}</strong>. Your registration for TVK Technologies has been recorded.
+      </p>
+      <div class="registration-details" *ngIf="registeredCandidateId">
+        <span class="detail-label">Reference ID:</span>
+        <span class="detail-value">{{ registeredCandidateId }}</span>
+      </div>
+      <p class="success-note">
+        Our training counseling and recruitment team will review your profile and reach out via phone or email shortly.
+      </p>
+      <div class="success-actions">
+        <button type="button" class="btn-primary" (click)="resetForm()">
+          Submit Another Registration
+        </button>
+      </div>
+    </section>
+
+    <!-- Main Registration Form -->
+    <section *ngIf="!submittedSuccessfully" class="form-card">
+      <div class="form-intro">
+        <h2>Candidate Application Form</h2>
+        <p>Please provide your academic and training preferences. Fields marked with <span class="required-star">*</span> are required.</p>
+      </div>
+
+      <!-- Top Error Banner -->
+      <div *ngIf="submitError" class="alert-error" role="alert">
+        <span class="alert-icon" aria-hidden="true">⚠</span>
+        <span>{{ submitError }}</span>
+      </div>
+
+      <form (ngSubmit)="submitRegistration()" novalidate autocomplete="off">
+
+        <!-- 1. Name -->
+        <div class="form-group" [class.has-error]="touched['name'] && errors['name']">
+          <label for="name">
+            1. Name <span class="required-star">*</span>
+          </label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            [(ngModel)]="name"
+            (blur)="markTouched('name')"
+            (input)="validateField('name')"
+            placeholder="Enter your full name"
+            required
+            [class.input-error]="touched['name'] && errors['name']"
+          />
+          <span *ngIf="touched['name'] && errors['name']" class="field-error" role="alert">
+            {{ errors['name'] }}
+          </span>
+        </div>
+
+        <!-- 2. Email -->
+        <div class="form-group" [class.has-error]="touched['email'] && errors['email']">
+          <label for="email">
+            2. Email <span class="required-star">*</span>
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            [(ngModel)]="email"
+            (blur)="markTouched('email')"
+            (input)="validateField('email')"
+            placeholder="e.g. name@example.com"
+            required
+            [class.input-error]="touched['email'] && errors['email']"
+          />
+          <span *ngIf="touched['email'] && errors['email']" class="field-error" role="alert">
+            {{ errors['email'] }}
+          </span>
+        </div>
+
+        <!-- 3. Phone Number -->
+        <div class="form-group" [class.has-error]="touched['phone'] && errors['phone']">
+          <label for="phone">
+            3. Mobile Number <span class="required-star">*</span>
+          </label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            [ngModel]="phone"
+            (ngModelChange)="onPhoneInput($event)"
+            (blur)="markTouched('phone')"
+            inputmode="numeric"
+            maxlength="10"
+            pattern="[6-9][0-9]{9}"
+            placeholder="e.g. 9876543210"
+            required
+            [class.input-error]="touched['phone'] && errors['phone']"
+          />
+          <span *ngIf="touched['phone'] && errors['phone']" class="field-error" role="alert">
+            {{ errors['phone'] }}
+          </span>
+        </div>
+
+        <!-- 4. Date of Birth -->
+        <div class="form-group" [class.has-error]="touched['dateOfBirth'] && errors['dateOfBirth']">
+          <label for="dateOfBirth">
+            4. Date of Birth <span class="required-star">*</span>
+          </label>
+          <input
+            id="dateOfBirth"
+            name="dateOfBirth"
+            type="date"
+            [(ngModel)]="dateOfBirth"
+            (blur)="markTouched('dateOfBirth')"
+            (change)="validateField('dateOfBirth')"
+            required
+            [class.input-error]="touched['dateOfBirth'] && errors['dateOfBirth']"
+          />
+          <span *ngIf="touched['dateOfBirth'] && errors['dateOfBirth']" class="field-error" role="alert">
+            {{ errors['dateOfBirth'] }}
+          </span>
+        </div>
+
+        <!-- 5. Street Address -->
+        <div class="form-group full-width" [class.has-error]="touched['address'] && errors['address']">
+          <label for="address">
+            5. Street Address <span class="required-star">*</span>
+          </label>
+          <input
+            id="address"
+            name="address"
+            type="text"
+            [(ngModel)]="address"
+            (blur)="markTouched('address')"
+            (input)="validateField('address')"
+            placeholder="House number, street, area"
+            required
+            [class.input-error]="touched['address'] && errors['address']"
+          />
+          <span *ngIf="touched['address'] && errors['address']" class="field-error" role="alert">
+            {{ errors['address'] }}
+          </span>
+        </div>
+
+        <!-- 6. City / Location -->
+        <div class="form-group" [class.has-error]="touched['location'] && errors['location']">
+          <label for="location">
+            6. City / Location <span class="required-star">*</span>
+          </label>
+          <input
+            id="location"
+            name="location"
+            type="text"
+            [(ngModel)]="location"
+            (blur)="markTouched('location')"
+            (input)="validateField('location')"
+            placeholder="City / District (e.g. Chennai, Bangalore)"
+            required
+            [class.input-error]="touched['location'] && errors['location']"
+          />
+          <span *ngIf="touched['location'] && errors['location']" class="field-error" role="alert">
+            {{ errors['location'] }}
+          </span>
+        </div>
+
+        <!-- 7. State -->
+        <div class="form-group" [class.has-error]="touched['state'] && errors['state']">
+          <label for="state">7. State / Union Territory <span class="required-star">*</span></label>
+          <select
+            id="state"
+            name="state"
+            [(ngModel)]="state"
+            (blur)="markTouched('state')"
+            (change)="validateField('state')"
+            required
+            [class.input-error]="touched['state'] && errors['state']"
+          >
+            <option value="" disabled>-- Select State / Union Territory --</option>
+            <option *ngFor="let stateOption of indianStates" [value]="stateOption">{{ stateOption }}</option>
+          </select>
+          <span *ngIf="touched['state'] && errors['state']" class="field-error" role="alert">
+            {{ errors['state'] }}
+          </span>
+        </div>
+
+        <!-- 8. PIN Code -->
+        <div class="form-group" [class.has-error]="touched['pincode'] && errors['pincode']">
+          <label for="pincode">8. PIN Code <span class="required-star">*</span></label>
+          <input
+            id="pincode"
+            name="pincode"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            pattern="[1-9][0-9]{5}"
+            [(ngModel)]="pincode"
+            (blur)="markTouched('pincode')"
+            (ngModelChange)="onPincodeInput($event)"
+            placeholder="6-digit PIN code"
+            required
+            [class.input-error]="touched['pincode'] && errors['pincode']"
+          />
+          <span *ngIf="touched['pincode'] && errors['pincode']" class="field-error" role="alert">
+            {{ errors['pincode'] }}
+          </span>
+        </div>
+
+        <!-- 9. Degree passout -->
+        <div class="form-group" [class.has-error]="touched['yearOfPassing'] && errors['yearOfPassing']">
+          <label for="yearOfPassing">
+            9. Degree passout <span class="required-star">*</span>
+          </label>
+          <input
+            id="yearOfPassing"
+            name="yearOfPassing"
+            type="text"
+            maxlength="4"
+            [(ngModel)]="yearOfPassing"
+            (blur)="markTouched('yearOfPassing')"
+            (input)="validateField('yearOfPassing')"
+            placeholder="e.g. 2024"
+            required
+            [class.input-error]="touched['yearOfPassing'] && errors['yearOfPassing']"
+          />
+          <span *ngIf="touched['yearOfPassing'] && errors['yearOfPassing']" class="field-error" role="alert">
+            {{ errors['yearOfPassing'] }}
+          </span>
+        </div>
+
+        <!-- 10. Name of Degree -->
+        <div class="form-group" [class.has-error]="touched['degree'] && errors['degree']">
+          <label for="degree">
+            10. Name of Degree <span class="required-star">*</span>
+          </label>
+          <input
+            id="degree"
+            name="degree"
+            type="text"
+            [(ngModel)]="degree"
+            (blur)="markTouched('degree')"
+            (input)="validateField('degree')"
+            placeholder="e.g. B.E. Computer Science, BCA, MCA, B.Sc"
+            required
+            [class.input-error]="touched['degree'] && errors['degree']"
+          />
+          <span *ngIf="touched['degree'] && errors['degree']" class="field-error" role="alert">
+            {{ errors['degree'] }}
+          </span>
+        </div>
+
+        <!-- 11. College/University -->
+        <div class="form-group" [class.has-error]="touched['college'] && errors['college']">
+          <label for="college">
+            11. College/University <span class="required-star">*</span>
+          </label>
+          <input
+            id="college"
+            name="college"
+            type="text"
+            [(ngModel)]="college"
+            (blur)="markTouched('college')"
+            (input)="validateField('college')"
+            placeholder="Enter college or university name"
+            required
+            [class.input-error]="touched['college'] && errors['college']"
+          />
+          <span *ngIf="touched['college'] && errors['college']" class="field-error" role="alert">
+            {{ errors['college'] }}
+          </span>
+        </div>
+
+        <!-- 12. Looking For -->
+        <div class="form-group" [class.has-error]="touched['lookingFor'] && errors['lookingFor']">
+          <label for="lookingFor">
+            12. Looking For <span class="required-star">*</span>
+          </label>
+          <select
+            id="lookingFor"
+            name="lookingFor"
+            [(ngModel)]="lookingFor"
+            (ngModelChange)="onLookingForChange()"
+            (blur)="markTouched('lookingFor')"
+            (change)="onLookingForChange()"
+            required
+            [class.input-error]="touched['lookingFor'] && errors['lookingFor']"
+          >
+            <option value="" disabled>-- Select Option --</option>
+            <option *ngFor="let option of lookingForOptions" [value]="option">
+              {{ option }}
+            </option>
+          </select>
+          <span *ngIf="touched['lookingFor'] && errors['lookingFor']" class="field-error" role="alert">
+            {{ errors['lookingFor'] }}
+          </span>
+        </div>
+
+        <!-- 13. Choose Course -->
+        <div class="form-group" [class.has-error]="touched['programmingLanguage'] && errors['programmingLanguage']" [class.disabled-group]="isJobMode">
+          <label for="programmingLanguage">
+            13. Choose Course <span class="required-star" *ngIf="!isJobMode">*</span>
+          </label>
+          <select
+            id="programmingLanguage"
+            name="programmingLanguage"
+            [(ngModel)]="programmingLanguage"
+            (blur)="markTouched('programmingLanguage')"
+            (change)="validateField('programmingLanguage')"
+            [disabled]="isJobMode"
+            [attr.disabled]="isJobMode ? '' : null"
+            [required]="!isJobMode"
+            [class.input-error]="touched['programmingLanguage'] && errors['programmingLanguage']"
+          >
+            <option value="" disabled>-- Select a TVK course --</option>
+            <option *ngFor="let course of courseOptions" [value]="course">
+              {{ course }}
+            </option>
+          </select>
+          <span *ngIf="touched['programmingLanguage'] && errors['programmingLanguage']" class="field-error" role="alert">
+            {{ errors['programmingLanguage'] }}
+          </span>
+        </div>
+
+        <!-- 14. Mode of Course -->
+        <div class="form-group" [class.has-error]="touched['modeOfCourse'] && errors['modeOfCourse']">
+          <label for="modeOfCourse">
+            14. Mode of Course <span class="required-star">*</span>
+          </label>
+          <select
+            id="modeOfCourse"
+            name="modeOfCourse"
+            [(ngModel)]="modeOfCourse"
+            (ngModelChange)="onModeOfCourseChange()"
+            (blur)="markTouched('modeOfCourse')"
+            (change)="onModeOfCourseChange()"
+            required
+            [class.input-error]="touched['modeOfCourse'] && errors['modeOfCourse']"
+          >
+            <option value="" disabled>-- Select Mode --</option>
+            <option *ngFor="let mode of modeOfCourseOptions" [value]="mode">
+              {{ mode }}
+            </option>
+          </select>
+          <span *ngIf="touched['modeOfCourse'] && errors['modeOfCourse']" class="field-error" role="alert">
+            {{ errors['modeOfCourse'] }}
+          </span>
+        </div>
+
+        <!-- Primary Skills -->
+        <div *ngIf="isJobMode" class="form-group" [class.has-error]="touched['primarySkills'] && errors['primarySkills']">
+          <label for="primarySkills">
+            Primary Skills
+          </label>
+          <input
+            id="primarySkills"
+            name="primarySkills"
+            type="text"
+            [(ngModel)]="primarySkills"
+            (blur)="markTouched('primarySkills')"
+            (input)="validateField('primarySkills')"
+            placeholder="e.g. Java, Python, Angular, React"
+            [class.input-error]="touched['primarySkills'] && errors['primarySkills']"
+          />
+          <span *ngIf="touched['primarySkills'] && errors['primarySkills']" class="field-error" role="alert">
+            {{ errors['primarySkills'] }}
+          </span>
+        </div>
+
+        <!-- Secondary Skills -->
+        <div *ngIf="isJobMode" class="form-group" [class.has-error]="touched['secondarySkills'] && errors['secondarySkills']">
+          <label for="secondarySkills">
+            Secondary Skills
+          </label>
+          <input
+            id="secondarySkills"
+            name="secondarySkills"
+            type="text"
+            [(ngModel)]="secondarySkills"
+            (blur)="markTouched('secondarySkills')"
+            (input)="validateField('secondarySkills')"
+            placeholder="e.g. SQL, Git, Docker, Spring Boot"
+            [class.input-error]="touched['secondarySkills'] && errors['secondarySkills']"
+          />
+          <span *ngIf="touched['secondarySkills'] && errors['secondarySkills']" class="field-error" role="alert">
+            {{ errors['secondarySkills'] }}
+          </span>
+        </div>
+
+        <!-- Upload Resume -->
+        <div class="form-group full-width file-upload-group" [class.has-error]="resumeError">
+          <label for="resume">
+            13. Upload Resume <span class="file-hint">(PDF, DOC, DOCX — Max 1 MB)</span>
+          </label>
+
+          <div class="file-input-wrapper">
+            <input
+              #fileInput
+              id="resume"
+              name="resume"
+              type="file"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              (change)="onFileSelected($event)"
+              class="hidden-file-input"
+            />
+
+            <button
+              type="button"
+              class="btn-file-select"
+              (click)="fileInput.click()"
+            >
+              <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>{{ resumeFileName ? 'Change Resume File' : 'Select Resume File' }}</span>
+            </button>
+
+            <!-- Selected File Display -->
+            <div *ngIf="resumeFileName" class="selected-file-chip">
+              <span class="chip-name" [title]="resumeFileName">{{ resumeFileName }}</span>
+              <span class="chip-size">({{ resumeFileSizeFormatted }})</span>
+              <button
+                type="button"
+                class="chip-remove"
+                (click)="removeResume()"
+                title="Remove selected resume"
+                aria-label="Remove resume"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          <span *ngIf="resumeError" class="field-error file-error" role="alert">
+            {{ resumeError }}
+          </span>
+        </div>
+
+        <!-- 15. How Did You Find Us? -->
+        <div class="form-group" [class.has-error]="touched['howDidYouFindUs'] && errors['howDidYouFindUs']">
+          <label for="howDidYouFindUs">
+            15. How Did You Find Us? <span class="required-star">*</span>
+          </label>
+          <select
+            id="howDidYouFindUs"
+            name="howDidYouFindUs"
+            [(ngModel)]="howDidYouFindUs"
+            (blur)="markTouched('howDidYouFindUs')"
+            (change)="validateField('howDidYouFindUs')"
+            required
+            [class.input-error]="touched['howDidYouFindUs'] && errors['howDidYouFindUs']"
+          >
+            <option value="" disabled>-- Select Option --</option>
+            <option *ngFor="let option of howFoundOptions" [value]="option">
+              {{ option }}
+            </option>
+          </select>
+          <span *ngIf="touched['howDidYouFindUs'] && errors['howDidYouFindUs']" class="field-error" role="alert">
+            {{ errors['howDidYouFindUs'] }}
+          </span>
+        </div>
+
+        <!-- 16. Course Duration -->
+        <div class="form-group" [class.has-error]="touched['courseDuration'] && errors['courseDuration']" [class.disabled-group]="isJobMode">
+          <label for="courseDuration">
+            16. Course Duration <span class="required-star" *ngIf="!isJobMode">*</span>
+          </label>
+          <select
+            id="courseDuration"
+            name="courseDuration"
+            [(ngModel)]="courseDuration"
+            (blur)="markTouched('courseDuration')"
+            (change)="validateField('courseDuration')"
+            [disabled]="isJobMode"
+            [attr.disabled]="isJobMode ? '' : null"
+            [required]="!isJobMode"
+            [class.input-error]="touched['courseDuration'] && errors['courseDuration']"
+          >
+            <option value="" disabled>-- Select Duration --</option>
+            <option *ngFor="let duration of courseDurationOptions" [value]="duration">
+              {{ duration }}
+            </option>
+          </select>
+          <span *ngIf="touched['courseDuration'] && errors['courseDuration']" class="field-error" role="alert">
+            {{ errors['courseDuration'] }}
+          </span>
+        </div>
+
+        <!-- 17. Preferred Start Date -->
+        <div class="form-group" [class.has-error]="touched['preferredStartDate'] && errors['preferredStartDate']" [class.disabled-group]="isJobMode">
+          <label for="preferredStartDate">
+            17. Preferred Course Start Date <span class="required-star" *ngIf="!isJobMode">*</span>
+          </label>
+          <input
+            id="preferredStartDate"
+            name="preferredStartDate"
+            type="date"
+            [min]="minPreferredStartDate"
+            [(ngModel)]="preferredStartDate"
+            (blur)="markTouched('preferredStartDate')"
+            (change)="validateField('preferredStartDate')"
+            [disabled]="isJobMode"
+            [attr.disabled]="isJobMode ? '' : null"
+            [required]="!isJobMode"
+            [class.input-error]="touched['preferredStartDate'] && errors['preferredStartDate']"
+          />
+          <span *ngIf="touched['preferredStartDate'] && errors['preferredStartDate']" class="field-error" role="alert">
+            {{ errors['preferredStartDate'] }}
+          </span>
+        </div>
+
+        <!-- Form Action Buttons -->
+        <div class="form-actions full-width">
+          <button
+            type="submit"
+            class="btn-primary btn-submit"
+            [disabled]="submitting"
+          >
+            <span *ngIf="submitting" class="spinner" aria-hidden="true"></span>
+            {{ submitting ? 'Submitting Registration...' : 'Submit Registration' }}
+          </button>
+
+          <button
+            type="button"
+            class="btn-secondary btn-reset"
+            [disabled]="submitting"
+            (click)="resetForm()"
+          >
+            Reset Form
+          </button>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- Portal Footer -->
+    <footer class="portal-footer">
+      <p>© {{ 2026 }} TVK Technologies. All rights reserved. Professional Technical Training Institute.</p>
+    </footer>
+
+  </div>
+</div>

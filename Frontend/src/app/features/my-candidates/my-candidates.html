@@ -1,0 +1,281 @@
+<section class="page-head">
+  <h2>My Candidates</h2>
+
+  <div class="page-toolbar">
+    <input [(ngModel)]="search" (ngModelChange)="refreshFilteredCandidates(true)" placeholder="Search candidates" aria-label="Search candidates" />
+    <select [(ngModel)]="status" (ngModelChange)="refreshFilteredCandidates(true)" aria-label="Filter by status">
+      <option value="ALL">All statuses</option>
+      <option *ngFor="let item of statuses" [value]="item">{{ label(item) }}</option>
+    </select>
+    <span class="result-count">{{ filteredCandidates.length }} candidates</span>
+  </div>
+</section>
+
+<section class="candidate-list">
+  <p *ngIf="error" class="error" role="alert">{{ error }}</p>
+  <p *ngIf="statusError" class="error" role="alert">{{ statusError }}</p>
+  <div class="table-scroll">
+    <table class="candidate-table">
+      <thead>
+        <tr>
+          <th scope="col" [attr.aria-sort]="sortKey === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'">
+            <button type="button" class="sort-button" (click)="sortBy('name')">Name <span>{{ sortKey === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span></button>
+          </th>
+          <th scope="col" [attr.aria-sort]="sortKey === 'email' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'">
+            <button type="button" class="sort-button" (click)="sortBy('email')">Email <span>{{ sortKey === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span></button>
+          </th>
+          <th scope="col" [attr.aria-sort]="sortKey === 'phone' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'">
+            <button type="button" class="sort-button" (click)="sortBy('phone')">Phone <span>{{ sortKey === 'phone' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span></button>
+          </th>
+          <th scope="col" [attr.aria-sort]="sortKey === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'">
+            <button type="button" class="sort-button" (click)="sortBy('status')">Status <span>{{ sortKey === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span></button>
+          </th>
+          <th scope="col"><span class="sr-only">Candidate actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let candidate of visibleCandidates; trackBy: trackByCandidateId">
+          <tr>
+            <td class="name-cell" [title]="candidate.name">{{ candidate.name || "Unnamed candidate" }}</td>
+            <td class="email-cell" [title]="candidate.email">
+              <button
+                *ngIf="candidate.email"
+                type="button"
+                class="email-link-btn"
+                (click)="openEmail(candidate)"
+                [title]="'Send email to ' + candidate.email"
+              >
+                {{ candidate.email }}
+              </button>
+              <span *ngIf="!candidate.email" class="muted-text">No email</span>
+            </td>
+            <td class="phone-cell" [title]="candidate.phone">{{ candidate.phone || "No phone" }}</td>
+            <td>
+              <select
+                class="status-select"
+                [ngModel]="candidate.status"
+                [ngModelOptions]="{ standalone: true }"
+                [disabled]="statusSavingId === candidate.id"
+                [attr.aria-label]="'Status for ' + candidate.name"
+                (ngModelChange)="quickStatus(candidate, $event)"
+              >
+                <option *ngFor="let item of statuses" [value]="item">{{ label(item) }}</option>
+              </select>
+            </td>
+            <td class="row-actions">
+              <a [routerLink]="['/candidates', candidate.id]" class="details-link">View details</a>
+              <button
+                type="button"
+                class="contact-toggle"
+                [attr.aria-expanded]="expandedCandidateId === candidate.id"
+                [attr.aria-label]="(expandedCandidateId === candidate.id ? 'Hide' : 'Show') + ' contact actions for ' + candidate.name"
+                (click)="toggleDetails(candidate.id)"
+              >
+                {{ expandedCandidateId === candidate.id ? "Less" : "Contact" }}
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="expandedCandidateId === candidate.id" class="contact-row">
+            <td colspan="5">
+              <div class="contact-actions">
+                <button
+                  *ngIf="candidate.email"
+                  type="button"
+                  class="contact-action email-action"
+                  (click)="openEmail(candidate)"
+                >
+                  Email {{ candidate.email }}
+                </button>
+                <span *ngIf="!candidate.email" class="missing-contact">No email available</span>
+                <button type="button" class="contact-action whatsapp-action" [disabled]="!candidate.phone" (click)="openWhatsApp(candidate)">WhatsApp</button>
+                <span *ngIf="!candidate.phone" class="missing-contact">No phone available</span>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+  <p *ngIf="resumeError" class="error" role="alert">{{ resumeError }}</p>
+
+  <div
+    class="empty"
+    *ngIf="!loading && !error && !filteredCandidates.length"
+  >
+    No candidates match these filters.
+  </div>
+</section>
+
+<nav *ngIf="filteredCandidates.length > pageSize" class="pagination" aria-label="Candidate pages">
+  <span>Showing {{ firstVisibleIndex }} to {{ lastVisibleIndex }} of {{ filteredCandidates.length }}</span>
+  <div>
+    <button type="button" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)">Previous</button>
+    <span>Page {{ currentPage }} of {{ pageCount }}</span>
+    <button type="button" [disabled]="currentPage === pageCount" (click)="setPage(currentPage + 1)">Next</button>
+  </div>
+</nav>
+
+<div *ngIf="whatsAppCandidate" class="dialog-backdrop" (click)="closeWhatsApp()">
+  <section
+    class="message-dialog whatsapp-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="whatsapp-title"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="dialog-heading">
+      <div>
+        <h3 id="whatsapp-title">WhatsApp {{ whatsAppCandidate.name || "Candidate" }}</h3>
+        <p class="dialog-sub">Recipient Phone: {{ whatsAppCandidate.phone }}</p>
+      </div>
+      <button type="button" class="dialog-close" aria-label="Close" (click)="closeWhatsApp()">×</button>
+    </div>
+
+    <div class="email-meta-fields">
+      <div class="meta-row">
+        <span class="meta-label">To:</span>
+        <span class="meta-value">{{ whatsAppCandidate.name }} ({{ whatsAppCandidate.phone }})</span>
+      </div>
+    </div>
+
+    <div class="email-form-group">
+      <label for="whatsapp-template-select">Message Template</label>
+      <select
+        id="whatsapp-template-select"
+        class="email-form-select"
+        [ngModel]="whatsAppTemplateKey"
+        (ngModelChange)="onWhatsAppTemplateChange($event)"
+      >
+        <option *ngFor="let opt of whatsAppTemplateOptions" [value]="opt.key">
+          {{ opt.label }}
+        </option>
+      </select>
+    </div>
+
+    <div class="email-form-group">
+      <label for="whatsapp-message-text">Message</label>
+      <textarea
+        id="whatsapp-message-text"
+        class="email-form-textarea"
+        [(ngModel)]="whatsAppMessage"
+        rows="6"
+        placeholder="Type WhatsApp message..."
+        required
+      ></textarea>
+    </div>
+
+    <p *ngIf="whatsAppError" class="dialog-error" role="alert">{{ whatsAppError }}</p>
+    <p *ngIf="whatsAppSuccess" class="dialog-success" role="status">{{ whatsAppSuccess }}</p>
+
+    <div class="dialog-hint-box" style="margin-bottom: 1rem; padding: 0.6rem 0.8rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 0.82rem; color: #166534; display: flex; align-items: center; gap: 0.5rem;">
+      <span>💡</span>
+      <span>Outbound message dispatched via Meta WhatsApp Cloud API from <strong>+91 79047 22117</strong>.</span>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="cancel-button" (click)="closeWhatsApp()" [disabled]="whatsAppSending">Cancel</button>
+      <button
+        type="button"
+        class="send-button whatsapp-direct-btn"
+        [disabled]="whatsAppSending || !whatsAppMessage.trim()"
+        (click)="sendDirectWhatsApp()"
+      >
+        {{ whatsAppSending ? "Sending..." : "Send Message" }}
+      </button>
+    </div>
+  </section>
+</div>
+
+<div *ngIf="emailCandidate" class="dialog-backdrop" (click)="closeEmail()">
+  <section
+    class="message-dialog email-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="email-dialog-title"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="dialog-heading">
+      <div>
+        <h3 id="email-dialog-title">Send Email to {{ emailCandidate.name || "Candidate" }}</h3>
+        <p class="dialog-sub">Direct in-app dispatch from your account</p>
+      </div>
+      <button type="button" class="dialog-close" aria-label="Close" (click)="closeEmail()">×</button>
+    </div>
+
+    <div *ngIf="!smtpConfigured" class="smtp-warning-box">
+      <strong>⚠️ Real email sending requires SMTP in backend/.env</strong>
+      <span>To deliver to candidate inboxes, set <code>SMTP_USER</code> &amp; <code>SMTP_PASS</code> (e.g. Gmail App Password) in <code>backend/.env</code>.</span>
+    </div>
+
+
+    <div class="email-meta-fields">
+      <div class="meta-row">
+        <span class="meta-label">From:</span>
+        <span class="meta-value sender-badge">
+          {{ currentUserName }} &lt;{{ senderFromEmail }}&gt;
+        </span>
+      </div>
+      <div class="meta-row" *ngIf="currentUserEmail && currentUserEmail !== senderFromEmail">
+        <span class="meta-label">Reply-To:</span>
+        <span class="meta-value">{{ currentUserEmail }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">To:</span>
+        <span class="meta-value">{{ emailCandidate.email }}</span>
+      </div>
+    </div>
+
+    <div class="email-form-group">
+      <label for="email-template-select">Email Template</label>
+      <select
+        id="email-template-select"
+        class="email-form-select"
+        [ngModel]="emailTemplateKey"
+        (ngModelChange)="onTemplateChange($event)"
+      >
+        <option *ngFor="let opt of emailTemplateOptions" [value]="opt.key">
+          {{ opt.label }}
+        </option>
+      </select>
+    </div>
+
+    <div class="email-form-group">
+      <label for="email-subject-input">Subject</label>
+      <input
+        id="email-subject-input"
+        type="text"
+        class="email-form-input"
+        [(ngModel)]="emailSubject"
+        placeholder="Subject line"
+        required
+      />
+    </div>
+
+    <div class="email-form-group">
+      <label for="email-message-body">Message</label>
+      <textarea
+        id="email-message-body"
+        class="email-form-textarea"
+        [(ngModel)]="emailMessage"
+        rows="8"
+        placeholder="Type your message here..."
+        required
+      ></textarea>
+    </div>
+
+    <p *ngIf="emailError" class="dialog-error" role="alert">{{ emailError }}</p>
+    <p *ngIf="emailSuccess" class="dialog-success" role="status">{{ emailSuccess }}</p>
+
+    <div class="dialog-actions">
+      <button type="button" class="cancel-button" (click)="closeEmail()" [disabled]="emailSending">Cancel</button>
+      <button
+        type="button"
+        class="send-button email-send-btn"
+        [disabled]="emailSending || !emailSubject.trim() || !emailMessage.trim()"
+        (click)="sendEmail()"
+      >
+        {{ emailSending ? "Sending email..." : "Send Email" }}
+      </button>
+    </div>
+  </section>
+</div>

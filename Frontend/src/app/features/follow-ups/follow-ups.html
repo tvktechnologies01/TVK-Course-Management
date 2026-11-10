@@ -1,0 +1,45 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">NEXT ACTIONS</span>
+    <h2>Follow-ups</h2>
+    <p>Keep callbacks and next actions visible to the team.</p>
+  </div>
+</section>
+
+<div class="columns">
+  <section class="card">
+    <div class="card-title">
+      <h3>Overdue</h3>
+      <span>{{ overdue.length }}</span>
+    </div>
+
+    <article *ngFor="let item of overdue">
+      <div>
+        <strong>{{ item.candidateName }}</strong>
+        <span>{{ item.notes || 'Follow-up' }}</span>
+        <small>{{ item.scheduledAt | date:'dd MMM yyyy, h:mm a' }}</small>
+      </div>
+      <button type="button" (click)="complete(item)">Complete</button>
+    </article>
+
+    <div class="empty" *ngIf="!overdue.length">No overdue follow-ups.</div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">
+      <h3>Upcoming</h3>
+      <span>{{ upcoming.length }}</span>
+    </div>
+
+    <article *ngFor="let item of upcoming">
+      <div>
+        <strong>{{ item.candidateName }}</strong>
+        <span>{{ item.notes || 'Follow-up' }}</span>
+        <small>{{ item.scheduledAt | date:'dd MMM yyyy, h:mm a' }}</small>
+      </div>
+      <button type="button" (click)="complete(item)">Complete</button>
+    </article>
+
+    <div class="empty" *ngIf="!upcoming.length">No upcoming follow-ups.</div>
+  </section>
+</div>

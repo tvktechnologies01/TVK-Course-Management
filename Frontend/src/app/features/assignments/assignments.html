@@ -1,0 +1,900 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">
+      WORK DISTRIBUTION
+    </span>
+
+    <h2>HR Assignments</h2>
+
+    <p>
+      Assign candidates to HR members and monitor
+      their recruitment performance.
+    </p>
+  </div>
+</section>
+
+<section class="assignment-card">
+  <div class="section-title">
+    <div>
+      <span class="eyebrow">
+        HR ASSIGNMENT
+      </span>
+
+      <h3>Assign Candidates to HR</h3>
+
+      <p>
+        Select unassigned candidates and assign
+        them to an HR member.
+      </p>
+    </div>
+
+    <div class="unassigned-summary">
+      <span>Unassigned</span>
+      <strong>{{ unassignedCount }}</strong>
+    </div>
+  </div>
+
+  <div class="assignment-toolbar">
+    <input
+      type="text"
+      [(ngModel)]="unassignedSearch"
+      placeholder="Search candidate, phone, email, position or skill..."
+    />
+
+    <select [(ngModel)]="employeeId">
+      <option value="">
+        Select HR member
+      </option>
+
+      <option
+        *ngFor="let employee of employees"
+        [value]="employee.id"
+      >
+        {{ employee.name }}
+      </option>
+    </select>
+
+    <button
+      type="button"
+      class="primary"
+      [disabled]="
+        !selectedCount ||
+        !employeeId
+      "
+      (click)="assign()"
+    >
+      Assign
+      {{ selectedCount || "" }}
+    </button>
+  </div>
+
+  <div class="selection-info">
+    <div>
+      <span>
+        {{ unassignedCandidates.length }}
+        unassigned candidates
+      </span>
+
+      <strong *ngIf="selectedCount">
+        {{ selectedCount }} selected
+      </strong>
+    </div>
+
+    <button
+      type="button"
+      class="select-all-button"
+      *ngIf="unassignedCandidates.length"
+      (click)="toggleAllUnassigned()"
+    >
+      {{
+        allUnassignedSelected
+          ? "Clear All"
+          : "Select All"
+      }}
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="check-column">
+            <input
+              type="checkbox"
+              [checked]="allUnassignedSelected"
+              (change)="toggleAllUnassigned()"
+            />
+          </th>
+
+          <th>
+            Candidate
+          </th>
+
+          <th>
+            Position
+          </th>
+
+          <th>
+            Contact
+          </th>
+
+          <th>
+            Experience
+          </th>
+
+          <th>
+            Added
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr
+          *ngFor="
+            let candidate of unassignedCandidates
+          "
+        >
+          <td class="check-column">
+            <input
+              type="checkbox"
+              [checked]="
+                selectedIds.includes(
+                  candidate.id
+                )
+              "
+              (change)="
+                toggleUnassigned(
+                  candidate.id
+                )
+              "
+            />
+          </td>
+
+          <td>
+            <strong class="candidate-name">
+              {{ candidate.name }}
+            </strong>
+
+            <span>
+              {{
+                candidate.location ||
+                  "Location not set"
+              }}
+            </span>
+          </td>
+
+          <td>
+            {{
+              candidate.position ||
+                "—"
+            }}
+          </td>
+
+          <td>
+            <a
+              *ngIf="candidate.phone"
+              [href]="
+                'tel:' +
+                candidate.phone
+              "
+            >
+              {{ candidate.phone }}
+            </a>
+
+            <span
+              *ngIf="!candidate.phone"
+            >
+              No phone
+            </span>
+
+            <small>
+              {{ candidate.email || "No email" }}
+            </small>
+          </td>
+
+          <td>
+            {{
+              candidate.experience ||
+                "—"
+            }}
+          </td>
+
+          <td>
+            {{
+              candidate.createdAt
+                | date:"dd MMM yyyy"
+            }}
+          </td>
+        </tr>
+
+        <tr
+          *ngIf="
+            !unassignedCandidates.length
+          "
+        >
+          <td
+            colspan="6"
+            class="empty"
+          >
+            <strong>
+              No unassigned candidates
+            </strong>
+
+            <span>
+              All active candidates have
+              already been assigned to an HR
+              member.
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="hr-selection">
+  <div class="section-title">
+    <div>
+      <span class="eyebrow">
+        HR PERFORMANCE
+      </span>
+
+      <h3>Select HR Member</h3>
+
+      <p>
+        Choose an HR member to view their
+        candidate dashboard.
+      </p>
+    </div>
+
+    <div class="unassigned-summary">
+      <span>Unassigned</span>
+      <strong>{{ unassignedCount }}</strong>
+    </div>
+  </div>
+
+  <div class="hr-cards">
+    <button
+      type="button"
+      class="hr-card"
+      *ngFor="let employee of employees"
+      [class.active]="
+        selectedHrId === employee.id
+      "
+      (click)="selectHr(employee.id)"
+    >
+      <div class="hr-card-top">
+        <span class="avatar">
+          {{ employee.name.charAt(0) }}
+        </span>
+
+        <span
+          class="active-indicator"
+          *ngIf="
+            selectedHrId === employee.id
+          "
+        >
+          Selected
+        </span>
+      </div>
+
+      <div class="hr-info">
+        <strong>
+          {{ employee.name }}
+        </strong>
+
+        <span>
+          {{ employee.email }}
+        </span>
+      </div>
+
+      <div class="hr-card-bottom">
+        <div>
+          <strong>
+            {{
+              candidates.filter(
+                (candidate) =>
+                  candidate.assignedToId ===
+                    employee.id &&
+                  candidate.status !==
+                    "ARCHIVED"
+              ).length
+            }}
+          </strong>
+
+          <span>Assigned</span>
+        </div>
+
+        <div class="arrow">
+          →
+        </div>
+      </div>
+    </button>
+  </div>
+</section>
+
+<section
+  class="empty-selection"
+  *ngIf="!selectedHrId"
+>
+  <div class="empty-icon">
+    ◎
+  </div>
+
+  <h3>Select an HR member</h3>
+
+  <p>
+    Choose an HR card above to view assigned
+    candidates, call statistics and
+    recruitment progress.
+  </p>
+</section>
+
+<ng-container *ngIf="selectedHrId">
+
+  <section class="selected-hr-head">
+    <div class="selected-person">
+      <span class="large-avatar">
+        {{ selectedHr?.name?.charAt(0) }}
+      </span>
+
+      <div>
+        <span class="eyebrow">
+          SELECTED HR
+        </span>
+
+        <h3>
+          {{ selectedHr?.name }}
+        </h3>
+
+        <p>
+          {{ selectedHr?.email }}
+
+          <span class="separator">
+            •
+          </span>
+
+          {{ totalAssigned }}
+          active candidates
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="change-button"
+      (click)="clearHr()"
+    >
+      Change HR
+    </button>
+  </section>
+
+  <section class="stats-grid">
+
+    <article class="stat-card primary-stat">
+      <div class="stat-icon">
+        ↗
+      </div>
+
+      <div>
+        <span>Assigned</span>
+
+        <strong>
+          {{ totalAssigned }}
+        </strong>
+
+        <small>
+          Total active candidates
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon blue">
+        ☎
+      </div>
+
+      <div>
+        <span>Called</span>
+
+        <strong>
+          {{ calledCount }}
+        </strong>
+
+        <small>
+          {{ contactRate }}% contact rate
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon orange">
+        ◷
+      </div>
+
+      <div>
+        <span>Follow-up</span>
+
+        <strong>
+          {{ followUpCount }}
+        </strong>
+
+        <small>
+          Pending follow-ups
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon purple">
+        ◎
+      </div>
+
+      <div>
+        <span>Interested</span>
+
+        <strong>
+          {{ interestedCount }}
+        </strong>
+
+        <small>
+          Positive responses
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon red">
+        ×
+      </div>
+
+      <div>
+        <span>Not Interested</span>
+
+        <strong>
+          {{ notInterestedCount }}
+        </strong>
+
+        <small>
+          Candidate declined
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon yellow">
+        ↻
+      </div>
+
+      <div>
+        <span>Callback</span>
+
+        <strong>
+          {{ callbackCount }}
+        </strong>
+
+        <small>
+          Need another call
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon violet">
+        ▣
+      </div>
+
+      <div>
+        <span>Interview Scheduled</span>
+
+        <strong>
+          {{ scheduledCount }}
+        </strong>
+
+        <small>
+          {{ interviewRate }}% interview rate
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon teal">
+        ✓
+      </div>
+
+      <div>
+        <span>Interview Completed</span>
+
+        <strong>
+          {{ completedCount }}
+        </strong>
+
+        <small>
+          Completed interviews
+        </small>
+      </div>
+    </article>
+
+    <article
+      class="stat-card selected-stat"
+    >
+      <div class="stat-icon green">
+        ★
+      </div>
+
+      <div>
+        <span>Selected</span>
+
+        <strong>
+          {{ selectedCandidateCount }}
+        </strong>
+
+        <small>
+          {{ selectionRate }}% selection rate
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon gray">
+        !
+      </div>
+
+      <div>
+        <span>Rejected</span>
+
+        <strong>
+          {{ rejectedCount }}
+        </strong>
+
+        <small>
+          Rejected candidates
+        </small>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon gray">
+        ◌
+      </div>
+
+      <div>
+        <span>On Hold</span>
+
+        <strong>
+          {{ onHoldCount }}
+        </strong>
+
+        <small>
+          Candidates on hold
+        </small>
+      </div>
+    </article>
+
+  </section>
+
+  <section class="performance-card">
+    <div class="performance-head">
+      <div>
+        <span class="eyebrow">
+          PERFORMANCE
+        </span>
+
+        <h3>
+          {{ selectedHr?.name }}
+          Recruitment Performance
+        </h3>
+
+        <p>
+          Candidate conversion from assignment
+          to interview and selection.
+        </p>
+      </div>
+    </div>
+
+    <div class="performance-grid">
+
+      <div class="performance-item">
+        <div class="performance-label">
+          <span>Contact Rate</span>
+
+          <strong>
+            {{ contactRate }}%
+          </strong>
+        </div>
+
+        <div class="progress">
+          <div
+            class="progress-value"
+            [style.width.%]="contactRate"
+          ></div>
+        </div>
+      </div>
+
+      <div class="performance-item">
+        <div class="performance-label">
+          <span>Interview Rate</span>
+
+          <strong>
+            {{ interviewRate }}%
+          </strong>
+        </div>
+
+        <div class="progress">
+          <div
+            class="progress-value"
+            [style.width.%]="interviewRate"
+          ></div>
+        </div>
+      </div>
+
+      <div class="performance-item">
+        <div class="performance-label">
+          <span>Selection Rate</span>
+
+          <strong>
+            {{ selectionRate }}%
+          </strong>
+        </div>
+
+        <div class="progress">
+          <div
+            class="progress-value"
+            [style.width.%]="selectionRate"
+          ></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="candidate-section">
+
+    <div class="section-title candidate-title">
+      <div>
+        <span class="eyebrow">
+          ASSIGNED CANDIDATES
+        </span>
+
+        <h3>
+          {{ selectedHr?.name }}
+          Candidates
+        </h3>
+
+        <p>
+          Manage and reassign candidates
+          assigned to this HR member.
+        </p>
+      </div>
+
+      <div class="candidate-count">
+        {{ selectedCandidates.length }}
+        candidates
+      </div>
+    </div>
+
+    <div class="card">
+
+      <div class="toolbar">
+
+        <input
+          type="text"
+          [(ngModel)]="search"
+          placeholder="Search candidate, phone, email, position or skill..."
+        />
+
+        <select
+          [(ngModel)]="employeeId"
+        >
+          <option value="">
+            Reassign selected to HR
+          </option>
+
+          <option
+            *ngFor="let employee of employees"
+            [value]="employee.id"
+            [disabled]="
+              employee.id === selectedHrId
+            "
+          >
+            {{ employee.name }}
+          </option>
+        </select>
+
+        <button
+          type="button"
+          class="primary"
+          [disabled]="
+            !selectedCount ||
+            !employeeId
+          "
+          (click)="assign()"
+        >
+          Reassign
+          {{ selectedCount || "" }}
+        </button>
+
+      </div>
+
+      <div class="selection-info">
+
+        <span>
+          {{ selectedCandidates.length }}
+          candidates
+        </span>
+
+        <strong
+          *ngIf="selectedCount"
+        >
+          {{ selectedCount }}
+          selected
+        </strong>
+
+      </div>
+
+      <div class="table-wrap">
+
+        <table>
+
+          <thead>
+            <tr>
+
+              <th class="check-column">
+                <input
+                  type="checkbox"
+                  [checked]="allSelected"
+                  (change)="toggleAll()"
+                />
+              </th>
+
+              <th>
+                Candidate
+              </th>
+
+              <th>
+                Position
+              </th>
+
+              <th>
+                Contact
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Follow-up
+              </th>
+
+            </tr>
+          </thead>
+
+          <tbody>
+
+            <tr
+              *ngFor="
+                let candidate of selectedCandidates
+              "
+            >
+
+              <td class="check-column">
+
+                <input
+                  type="checkbox"
+                  [checked]="
+                    selectedIds.includes(
+                      candidate.id
+                    )
+                  "
+                  (change)="
+                    toggle(candidate.id)
+                  "
+                />
+
+              </td>
+
+              <td>
+
+                <strong class="candidate-name">
+                  {{ candidate.name }}
+                </strong>
+
+                <span>
+                  {{
+                    candidate.location ||
+                      "Location not set"
+                  }}
+                </span>
+
+              </td>
+
+              <td>
+                {{
+                  candidate.position ||
+                    "—"
+                }}
+              </td>
+
+              <td>
+
+                <a
+                  *ngIf="candidate.phone"
+                  [href]="
+                    'tel:' +
+                    candidate.phone
+                  "
+                >
+                  {{ candidate.phone }}
+                </a>
+
+                <span
+                  *ngIf="!candidate.phone"
+                >
+                  No phone
+                </span>
+
+              </td>
+
+              <td>
+
+                <span class="status">
+                  {{
+                    statusLabel(
+                      candidate.status
+                    )
+                  }}
+                </span>
+
+              </td>
+
+              <td>
+
+                <span
+                  class="follow-up"
+                  [class.pending]="
+                    candidate.nextFollowUpAt
+                  "
+                >
+                  {{
+                    candidate.nextFollowUpAt
+                      ? (candidate.nextFollowUpAt
+                        | date:"dd MMM yyyy")
+                      : "—"
+                  }}
+                </span>
+
+              </td>
+
+            </tr>
+
+            <tr
+              *ngIf="
+                !selectedCandidates.length
+              "
+            >
+              <td
+                colspan="6"
+                class="empty"
+              >
+                <strong>
+                  No candidates found
+                </strong>
+
+                <span>
+                  No active candidates are
+                  assigned to this HR member.
+                </span>
+              </td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+  </section>
+
+</ng-container>

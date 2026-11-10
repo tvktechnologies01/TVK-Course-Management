@@ -1,0 +1,552 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">RECRUITMENT OVERVIEW</span>
+    <h2>Dashboard</h2>
+    <p>Monitor candidates, recruitment progress and HR workload.</p>
+  </div>
+</section>
+
+<div class="dashboard-state error-state" *ngIf="loadError" role="alert">
+  <span>{{ loadError }}</span>
+  <button type="button" (click)="retryLoad()">Retry</button>
+</div>
+
+<section class="stats">
+  <article class="stat-card">
+    <span class="stat-icon blue">♙</span>
+
+    <div>
+      <span>Total Candidates</span>
+      <strong>{{ total }}</strong>
+      <small>
+        {{ assignedCount }} assigned ·
+        {{ unassignedCount }} unassigned
+      </small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-icon green">▣</span>
+
+    <div>
+      <span>IR Resumes</span>
+      <strong>{{ irCount }}</strong>
+      <small>
+        {{ sourcePercentage(irCount) }}% of active candidates
+      </small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-icon purple">◫</span>
+
+    <div>
+      <span>Inbound Resumes</span>
+      <strong>{{ externalResumeCount }}</strong>
+      <small>
+        {{ sourcePercentage(externalResumeCount) }}% of active candidates
+      </small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-icon purple">↗</span>
+
+    <div>
+      <span>Outbound Resumes</span>
+      <strong>{{ outboundResumeCount }}</strong>
+      <small>
+        {{ sourcePercentage(outboundResumeCount) }}% of active candidates
+      </small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-icon orange">XL</span>
+    <div>
+      <span>Excel Resumes</span>
+      <strong>{{ excelResumeCount }}</strong>
+      <small>{{ sourcePercentage(excelResumeCount) }}% of active candidates</small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-icon orange">✓</span>
+
+    <div>
+      <span>Selected</span>
+      <strong>{{ selectedCount }}</strong>
+      <small>Successfully selected</small>
+    </div>
+  </article>
+</section>
+
+<section class="overview-grid">
+  <section class="card source-card">
+    <div class="card-head">
+      <div>
+        <span class="section-label">CANDIDATE SOURCES</span>
+        <h3>Candidate Sources</h3>
+        <p>IR, external, and Excel imports</p>
+      </div>
+
+      <a routerLink="/candidates">View candidates</a>
+    </div>
+
+    <div class="source-total">
+      <div>
+        <strong>{{ total }}</strong>
+        <span>Total active candidates</span>
+      </div>
+    </div>
+
+    <div class="source-item">
+      <div class="source-info">
+        <div class="source-title">
+          <span class="source-dot blue-dot"></span>
+          <strong>IR Resumes</strong>
+          <span>{{ irCount }}</span>
+        </div>
+
+        <small>Imported resumes</small>
+      </div>
+
+      <div class="source-progress">
+        <div class="progress-track">
+          <span
+            [style.width.%]="sourcePercentage(irCount)"
+          ></span>
+        </div>
+
+        <small>{{ sourcePercentage(irCount) }}%</small>
+      </div>
+    </div>
+
+    <div class="source-item">
+      <div class="source-info">
+        <div class="source-title">
+          <span class="source-dot orange-dot"></span>
+          <strong>Excel Resumes</strong>
+          <span>{{ excelResumeCount }}</span>
+        </div>
+        <small>Imported from Excel worksheets</small>
+      </div>
+      <div class="source-progress">
+        <div class="progress-track">
+          <span class="orange-progress" [style.width.%]="sourcePercentage(excelResumeCount)"></span>
+        </div>
+        <small>{{ sourcePercentage(excelResumeCount) }}%</small>
+      </div>
+    </div>
+
+    <div class="source-item">
+      <div class="source-info">
+        <div class="source-title">
+          <span class="source-dot purple-dot"></span>
+          <strong>Inbound Resumes</strong>
+          <span>{{ externalResumeCount }}</span>
+        </div>
+
+        <small>Resumes received from external website</small>
+      </div>
+
+      <div class="source-progress">
+        <div class="progress-track">
+          <span
+            class="purple-progress"
+            [style.width.%]="sourcePercentage(externalResumeCount)"
+          ></span>
+        </div>
+
+        <small>
+          {{ sourcePercentage(externalResumeCount) }}%
+        </small>
+      </div>
+    </div>
+  </section>
+
+  <section class="card action-card">
+    <div class="card-head">
+      <div>
+        <span class="section-label">NEXT ACTIONS</span>
+        <h3>Recruitment Activity</h3>
+        <p>Important numbers requiring attention</p>
+      </div>
+    </div>
+
+    <div class="source-item">
+      <div class="source-info">
+        <div class="source-title">
+          <span class="source-dot purple-dot"></span>
+          <strong>Outbound Resumes</strong>
+          <span>{{ outboundResumeCount }}</span>
+        </div>
+
+        <small>Resumes received from external sources</small>
+      </div>
+
+      <div class="source-progress">
+        <div class="progress-track">
+          <span
+            class="purple-progress"
+            [style.width.%]="sourcePercentage(outboundResumeCount)"
+          ></span>
+        </div>
+
+        <small>{{ sourcePercentage(outboundResumeCount) }}%</small>
+      </div>
+    </div>
+
+    <div class="action-list">
+      <a routerLink="/follow-ups" class="action-row">
+        <span class="action-icon orange-icon">◷</span>
+
+        <div>
+          <strong>Follow-ups</strong>
+          <small>Due within the next 7 days</small>
+        </div>
+
+        <b>{{ pendingFollowUps }}</b>
+      </a>
+
+      <a routerLink="/candidates" class="action-row">
+        <span class="action-icon blue-icon">☎</span>
+
+        <div>
+          <strong>Awaiting Response</strong>
+          <small>Candidates with no response</small>
+        </div>
+
+        <b>{{ noResponseCount }}</b>
+      </a>
+
+      <a routerLink="/assignments" class="action-row">
+        <span class="action-icon purple-icon">⇄</span>
+
+        <div>
+          <strong>Unassigned</strong>
+          <small>Candidates waiting for HR assignment</small>
+        </div>
+
+        <b>{{ unassignedCount }}</b>
+      </a>
+
+      <a routerLink="/candidates" class="action-row">
+        <span class="action-icon green-icon">✓</span>
+
+        <div>
+          <strong>Selected Candidates</strong>
+          <small>Successfully selected candidates</small>
+        </div>
+
+        <b>{{ selectedCount }}</b>
+      </a>
+    </div>
+  </section>
+</section>
+
+<section class="card pipeline-card">
+  <div class="card-head">
+    <div>
+      <span class="section-label">RECRUITMENT PIPELINE</span>
+      <h3>Candidate Progress</h3>
+      <p>Current status distribution across active candidates</p>
+    </div>
+
+    <a routerLink="/candidates">Manage candidates</a>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Contacted</span>
+        <strong>{{ contacted }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="contacted-bar"
+          [style.width.%]="pipelinePercentage(contacted)"
+        ></span>
+      </div>
+    </div>
+
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Interested</span>
+        <strong>{{ interested }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="interested-bar"
+          [style.width.%]="pipelinePercentage(interested)"
+        ></span>
+      </div>
+    </div>
+
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Interview Scheduled</span>
+        <strong>{{ scheduledCount }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="scheduled-bar"
+          [style.width.%]="pipelinePercentage(scheduledCount)"
+        ></span>
+      </div>
+    </div>
+
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Interview Completed</span>
+        <strong>{{ completedInterviewCount }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="completed-bar"
+          [style.width.%]="pipelinePercentage(completedInterviewCount)"
+        ></span>
+      </div>
+    </div>
+
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Selected</span>
+        <strong>{{ selectedCount }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="selected-bar"
+          [style.width.%]="pipelinePercentage(selectedCount)"
+        ></span>
+      </div>
+    </div>
+
+    <div class="pipeline-item">
+      <div class="pipeline-top">
+        <span>Rejected</span>
+        <strong>{{ rejectedCount }}</strong>
+      </div>
+
+      <div class="pipeline-track">
+        <span
+          class="rejected-bar"
+          [style.width.%]="pipelinePercentage(rejectedCount)"
+        ></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card hr-card">
+  <div class="card-head">
+    <div>
+      <span class="section-label">MANAGER ASSIGNMENTS</span>
+      <h3>HR Performance</h3>
+      <p>Assignment workload and candidate progress by HR member</p>
+    </div>
+
+    <a routerLink="/assignments">Manage assignments</a>
+  </div>
+
+  <div class="hr-grid">
+    <article
+      class="hr-member"
+      *ngFor="let employee of employees"
+    >
+      <div class="hr-card-top">
+        <div class="person">
+          <span class="avatar">
+            {{ employee.name.charAt(0).toUpperCase() }}
+          </span>
+
+          <div>
+            <strong>{{ employee.name }}</strong>
+            <small>HR / Interviewer</small>
+          </div>
+        </div>
+
+        <span class="assigned-badge">
+          {{ countFor(employee.id) }}
+        </span>
+      </div>
+
+      <div class="assigned-label">
+        Assigned candidates
+      </div>
+
+      <div class="hr-progress">
+        <div class="hr-progress-head">
+          <span>Contact progress</span>
+          <strong>
+            {{ contactedPercentage(employee.id) }}%
+          </strong>
+        </div>
+
+        <div class="progress-track">
+          <span
+            [style.width.%]="contactedPercentage(employee.id)"
+          ></span>
+        </div>
+      </div>
+
+      <div class="hr-metrics">
+        <div class="metric contacted">
+          <strong>{{ contactedFor(employee.id) }}</strong>
+          <span>Contacted</span>
+        </div>
+
+        <div class="metric response">
+          <strong>{{ noResponseFor(employee.id) }}</strong>
+          <span>No response</span>
+        </div>
+
+        <div class="metric interested">
+          <strong>{{ interestedFor(employee.id) }}</strong>
+          <span>Interested</span>
+        </div>
+
+        <div class="metric interview">
+          <strong>{{ scheduledFor(employee.id) }}</strong>
+          <span>Interview</span>
+        </div>
+
+        <div class="metric selected">
+          <strong>{{ selectedFor(employee.id) }}</strong>
+          <span>Selected</span>
+        </div>
+
+        <div class="metric rejected">
+          <strong>{{ rejectedFor(employee.id) }}</strong>
+          <span>Rejected</span>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="empty" *ngIf="!employees.length">
+    No HR members are available.
+  </div>
+</section>
+
+<div class="content-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <span class="section-label">SELECTED</span>
+        <h3>Selected Candidates</h3>
+        <p>Recently selected candidates</p>
+      </div>
+
+      <a routerLink="/candidates">View all</a>
+    </div>
+
+    <div class="candidate-list">
+      <div
+        class="candidate-row"
+        *ngFor="let candidate of selectedCandidates"
+      >
+        <div class="initial selected-initial">
+          {{ candidate.name.charAt(0).toUpperCase() }}
+        </div>
+
+        <div class="candidate-info">
+          <strong>{{ candidate.name }}</strong>
+
+          <span>
+            {{ candidate.position || "Position not set" }}
+            ·
+            {{ candidate.assignedToName || "Not assigned" }}
+          </span>
+        </div>
+
+        <span class="status selected">
+          SELECTED
+        </span>
+      </div>
+
+      <div
+        class="empty"
+        *ngIf="!selectedCandidates.length"
+      >
+        No candidates have been selected yet.
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <span class="section-label">RECENT</span>
+        <h3>Recent Candidates</h3>
+        <p>Latest records added to the CRM</p>
+      </div>
+
+      <a routerLink="/candidates">View all</a>
+    </div>
+
+    <div class="candidate-list">
+      <div
+        class="candidate-row"
+        *ngFor="let candidate of recent"
+      >
+        <div class="initial">
+          {{ candidate.name.charAt(0).toUpperCase() }}
+        </div>
+
+        <div class="candidate-info">
+          <strong>{{ candidate.name }}</strong>
+
+          <span>
+            {{ candidate.position || "Position not set" }}
+            ·
+            {{ sourceLabel(candidate.source) }}
+          </span>
+        </div>
+
+        <span
+          class="status"
+          [class]="candidate.status.toLowerCase()"
+        >
+          {{ label(candidate.status) }}
+        </span>
+      </div>
+
+      <div
+        class="empty"
+        *ngIf="!recent.length"
+      >
+        No candidates yet. Use the Import Resume section from the top navigation.
+      </div>
+    </div>
+  </section>
+</div>
+
+<section class="card archive-card">
+  <div class="archive-content">
+    <div>
+      <span class="section-label">ARCHIVE</span>
+
+      <h3>Archived Candidates</h3>
+
+      <p>
+        Candidates removed from the active recruitment pipeline,
+        including candidates who were not selected.
+      </p>
+    </div>
+
+    <div class="archive-summary">
+      <strong>{{ archivedCount }}</strong>
+      <span>Archived</span>
+    </div>
+
+    <a routerLink="/candidates" class="archive-link">
+      View archived
+    </a>
+  </div>
+</section>

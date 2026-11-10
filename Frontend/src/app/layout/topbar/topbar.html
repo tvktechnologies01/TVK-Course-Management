@@ -1,0 +1,296 @@
+<header class="topbar">
+  <div class="heading">
+    <h1>TVK Management</h1>
+    <p>Candidate operations and interview tracking</p>
+  </div>
+
+  <div class="top-actions">
+    <!-- HR / Manager Notification Bell for Candidate Support & Correction Requests -->
+    <div class="notification-container">
+      <button
+        type="button"
+        class="bell-btn"
+        (click)="toggleNotifications()"
+        [attr.aria-expanded]="showNotifications"
+        title="Candidate Requests & Support"
+      >
+        <svg class="bell-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span *ngIf="pendingCount > 0" class="bell-badge-orange">{{ pendingCount }}</span>
+      </button>
+
+      <!-- Dropdown Notification Panel -->
+      <div *ngIf="showNotifications" class="notification-dropdown">
+        <div class="dropdown-header">
+          <div class="dropdown-title-row">
+            <strong>Notifications &amp; Alerts</strong>
+            <span class="pending-pill" *ngIf="pendingCount > 0">{{ pendingCount }} Pending</span>
+          </div>
+          <button type="button" class="btn-refresh-icon" (click)="loadNotifications(true)" title="Refresh alerts">
+            ↻
+          </button>
+        </div>
+
+        <!-- Filter tabs for notifications -->
+        <div class="notif-tab-bar">
+          <button
+            type="button"
+            class="notif-tab-btn"
+            [class.active]="activeNotificationTab === 'ALL'"
+            (click)="activeNotificationTab = 'ALL'"
+          >
+            All ({{ pendingCount }})
+          </button>
+          <button
+            type="button"
+            class="notif-tab-btn"
+            [class.active]="activeNotificationTab === 'FACULTY'"
+            (click)="activeNotificationTab = 'FACULTY'"
+          >
+            Faculty Leaves ({{ pendingFacultyCount }})
+          </button>
+          <button
+            type="button"
+            class="notif-tab-btn"
+            [class.active]="activeNotificationTab === 'CANDIDATES'"
+            (click)="activeNotificationTab = 'CANDIDATES'"
+          >
+            Candidate Requests ({{ pendingCandidateCount }})
+          </button>
+        </div>
+
+        <div class="notifications-scroll-area">
+          <div *ngIf="loadingNotifications" class="dropdown-status-box">
+            <span class="spinner-tiny"></span> Loading notifications...
+          </div>
+
+          <div *ngIf="!loadingNotifications && pendingCount === 0" class="dropdown-empty-state">
+            <span class="check-icon">✓</span>
+            <p>No pending alerts or requests</p>
+          </div>
+
+          <!-- Section 1: Faculty Leave & Absence Alerts -->
+          <ng-container *ngIf="activeNotificationTab === 'ALL' || activeNotificationTab === 'FACULTY'">
+            <div
+              *ngFor="let alert of facultyAlerts"
+              class="notification-card is-faculty-alert"
+              (click)="onFacultyAlertClick(alert)"
+              title="Click to view and assign backup in Trainer Management"
+            >
+              <div class="card-top-row">
+                <span class="candidate-title font-bold">🚨 {{ alert.trainerName }}</span>
+                <span class="req-badge" [class.badge-orange]="alert.status === 'ON_LEAVE'" [class.badge-red]="alert.status === 'ABSENT'">
+                  ● {{ alert.status === 'ON_LEAVE' ? 'ON LEAVE' : 'NOT CHECKED IN' }}
+                </span>
+              </div>
+
+              <div class="candidate-id-tag">
+                <span class="badge-leave-cat">{{ alert.leaveType || 'ABSENCE' }}</span>
+                <span> &bull; {{ alert.startDate || 'Today' }} to {{ alert.expectedReturnDate ? (alert.expectedReturnDate | date:'mediumDate') : 'Today' }}</span>
+              </div>
+
+              <p class="request-desc">"{{ alert.leaveReason || 'Absence recorded for today' }}"</p>
+
+              <div class="alert-impact-tag">
+                <span>⚠️ {{ alert.affectedStudentsCount || alert.affectedStudentCount || 0 }} Students &bull; {{ (alert.affectedBatches || alert.scheduledBatches)?.length || 0 }} Batch(es) Affected</span>
+              </div>
+
+              <div class="card-footer-row">
+                <span class="faculty-handover" *ngIf="alert.handoverNotes">Notes: {{ alert.handoverNotes }}</span>
+                <span class="action-cta">Assign Backup &rarr;</span>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Section 2: Candidate Requests -->
+          <ng-container *ngIf="activeNotificationTab === 'ALL' || activeNotificationTab === 'CANDIDATES'">
+            <div
+              *ngFor="let item of notifications"
+              class="notification-card"
+              [class.is-pending]="item.status === 'Pending'"
+              [class.is-in-progress]="item.status === 'In Progress'"
+              [class.is-completed]="item.status === 'Resolved' || item.status === 'Completed'"
+              (click)="onNotificationClick(item)"
+            >
+              <div class="card-top-row">
+                <span class="candidate-title">{{ item.candidateName }}</span>
+                <span
+                  class="req-badge"
+                  [class.badge-orange]="item.status === 'Pending'"
+                  [class.badge-blue]="item.status === 'In Progress'"
+                  [class.badge-green]="item.status === 'Resolved' || item.status === 'Completed'"
+                >
+                  ● {{ item.status }}
+                </span>
+              </div>
+
+              <div class="candidate-id-tag">
+                <span *ngIf="item.email">✉ {{ item.email }}</span>
+                <span *ngIf="item.phone"> &bull; 📞 {{ item.phone }}</span>
+              </div>
+
+              <div class="candidate-course-tag" *ngIf="item.courseName">
+                🎓 {{ item.courseName }}
+              </div>
+
+              <p class="request-desc">{{ item.requestText }}</p>
+
+              <div class="card-footer-row">
+                <span class="request-timestamp">{{ item.requestedAt | date:'medium' }}</span>
+                <span class="action-cta">Review Request &rarr;</span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    @if (auth.role === 'MANAGER') {
+    <button type="button" class="quick-add" (click)="goToImport()">
+      + Import Resumes
+    </button>
+    }
+
+    <div class="profile">
+      <div class="avatar">{{ auth.user?.name?.charAt(0) || "U" }}</div>
+      <div>
+        <strong>{{ auth.user?.name }}</strong>
+        <span>{{ auth.user?.role }}</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Manager Request Review & Resolution Modal -->
+<div *ngIf="selectedRequest" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="support-modal-card">
+    <header class="support-modal-header">
+      <div class="modal-title-group">
+        <h3>Candidate Support Request</h3>
+        <span
+          class="req-badge"
+          [class.badge-orange]="selectedRequest.status === 'Pending'"
+          [class.badge-blue]="selectedRequest.status === 'In Progress'"
+          [class.badge-green]="selectedRequest.status === 'Resolved' || selectedRequest.status === 'Completed'"
+        >
+          ● {{ selectedRequest.status }}
+        </span>
+      </div>
+      <button type="button" class="btn-close-modal" (click)="closeRequestModal()">×</button>
+    </header>
+
+    <div *ngIf="actionFeedback" class="alert-box success">
+      {{ actionFeedback }}
+    </div>
+
+    <div *ngIf="actionError" class="alert-box error">
+      {{ actionError }}
+    </div>
+
+    <div class="request-details-grid">
+      <div class="detail-cell">
+        <label>Candidate Name</label>
+        <strong>{{ selectedRequest.candidateName }}</strong>
+      </div>
+      <div class="detail-cell">
+        <label>Registered Email</label>
+        <span>{{ selectedRequest.email || 'Not specified' }}</span>
+      </div>
+      <div class="detail-cell">
+        <label>Phone Number</label>
+        <span>{{ selectedRequest.phone || 'Not specified' }}</span>
+      </div>
+      <div class="detail-cell">
+        <label>Course Name</label>
+        <span>{{ selectedRequest.courseName || 'General' }}</span>
+      </div>
+      <div class="detail-cell">
+        <label>Submitted At</label>
+        <span>{{ selectedRequest.requestedAt | date:'medium' }}</span>
+      </div>
+      <div class="detail-cell">
+        <label>Candidate Account Status</label>
+        <span *ngIf="selectedRequest.accountCreated" class="account-badge active">
+          ✓ Active Account (Username: <code>{{ selectedRequest.accountUsername }}</code>)
+        </span>
+        <span *ngIf="!selectedRequest.accountCreated" class="account-badge missing">
+          ⚠️ No Portal Account Created
+        </span>
+      </div>
+    </div>
+
+    <div class="issue-description-box">
+      <label>Reported Issue / Problem</label>
+      <div class="issue-text">{{ selectedRequest.requestText }}</div>
+    </div>
+
+    <div class="modal-section-divider"></div>
+
+    <div class="support-modal-actions">
+      <!-- Status Management Buttons -->
+      <div class="status-action-group">
+        <label>Update Status:</label>
+        <div class="btn-pill-group">
+          <button
+            type="button"
+            class="btn-pill"
+            [class.active]="selectedRequest.status === 'Pending'"
+            (click)="updateStatus('Pending')"
+            [disabled]="updatingStatus"
+          >
+            Pending
+          </button>
+          <button
+            type="button"
+            class="btn-pill in-progress"
+            [class.active]="selectedRequest.status === 'In Progress'"
+            (click)="updateStatus('In Progress')"
+            [disabled]="updatingStatus"
+          >
+            In Progress
+          </button>
+          <button
+            type="button"
+            class="btn-pill resolved"
+            [class.active]="selectedRequest.status === 'Resolved' || selectedRequest.status === 'Completed'"
+            (click)="updateStatus('Resolved')"
+            [disabled]="updatingStatus"
+          >
+            Resolved
+          </button>
+        </div>
+      </div>
+
+      <!-- Password Recovery & Account Assistance -->
+      <div class="account-action-group">
+        <label>Password &amp; Credentials Assistance:</label>
+        <div class="account-action-buttons">
+          <button
+            type="button"
+            class="btn-action-primary"
+            (click)="goToCandidatePortalAccount()"
+            title="Open Candidate Portal Account in External Resumes to manage username & password"
+          >
+            🔑 Candidate Portal Account &rarr;
+          </button>
+
+          <button
+            type="button"
+            class="btn-action-outline"
+            (click)="goToCandidateProfile()"
+          >
+            Open Full CRM Profile &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="support-modal-footer">
+      <button type="button" class="btn-modal-close" (click)="closeRequestModal()">
+        Close
+      </button>
+    </footer>
+  </div>
+</div>

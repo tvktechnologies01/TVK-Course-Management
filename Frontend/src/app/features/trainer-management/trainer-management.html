@@ -1,0 +1,2837 @@
+<div class="trainer-mgmt-container">
+  <!-- Top Header -->
+  <header class="page-head">
+    <div class="head-titles">
+      <span class="eyebrow">ACADEMY & INSTRUCTOR WORKLOAD</span>
+      <h2>Trainer Management</h2>
+      <p>Manage trainer registrations, batch schedules, attendance registers, availability, and faculty workload distribution.</p>
+    </div>
+    <div class="head-quick-actions">
+      <button type="button" class="btn-primary" (click)="openAddTrainerModal()">
+        <span>+</span> Add Trainer
+      </button>
+      <button type="button" class="btn-outline" (click)="openAutoAllocateModal()">
+        <span>⚡</span> Auto Allocate Students
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Toast Banner -->
+  <div *ngIf="notificationMessage" class="toast-banner" [ngClass]="notificationType">
+    <span class="toast-text">{{ notificationMessage }}</span>
+    <button type="button" class="toast-close" (click)="notificationMessage = ''" aria-label="Close message">&times;</button>
+  </div>
+
+  <!-- Internal Tabs Bar -->
+  <nav class="nav-tabs" role="tablist">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="selectedTab === 'overview'"
+      (click)="switchTab('overview')"
+      role="tab"
+      [attr.aria-selected]="selectedTab === 'overview'"
+    >
+      <span class="tab-icon">📊</span>
+      <span>Overview</span>
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="selectedTab === 'trainers'"
+      (click)="switchTab('trainers')"
+      role="tab"
+      [attr.aria-selected]="selectedTab === 'trainers'"
+    >
+      <span class="tab-icon">👨‍🏫</span>
+      <span>Trainer Directory</span>
+      <span class="tab-pill" *ngIf="trainers.length">{{ trainers.length }}</span>
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="selectedTab === 'batches'"
+      (click)="switchTab('batches')"
+      role="tab"
+      [attr.aria-selected]="selectedTab === 'batches'"
+    >
+      <span class="tab-icon">🕒</span>
+      <span>Batches & Schedules</span>
+      <span class="tab-pill" *ngIf="batches.length">{{ batches.length }}</span>
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="selectedTab === 'attendance'"
+      (click)="switchTab('attendance')"
+      role="tab"
+      [attr.aria-selected]="selectedTab === 'attendance'"
+    >
+      <span class="tab-icon">📝</span>
+      <span>Daily Attendance &amp; Register</span>
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="selectedTab === 'history'"
+      (click)="switchTab('history')"
+      role="tab"
+      [attr.aria-selected]="selectedTab === 'history'"
+    >
+      <span class="tab-icon">📜</span>
+      <span>Allocation History</span>
+    </button>
+  </nav>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading trainer management records...</p>
+  </div>
+
+  <!-- TAB 1: OVERVIEW -->
+  <section *ngIf="!loading && selectedTab === 'overview'" class="tab-content">
+    <!-- Faculty Daily Attendance & Automated Absence Alert Banner -->
+    <div class="faculty-attendance-banner" *ngIf="facultyAttendanceOverview as fao">
+      <div class="banner-top">
+        <div class="banner-title-group">
+          <span class="badge-live">⚡ REAL-TIME FACULTY LOG</span>
+          <h3>Faculty Daily Attendance &amp; Automated Absence Alerts</h3>
+          <span class="banner-date-badge">{{ fao.date }}</span>
+        </div>
+        <div class="banner-controls">
+          <input
+            type="date"
+            class="form-input form-input-sm"
+            [(ngModel)]="facultyAttendanceDate"
+            (change)="loadFacultyDailyAttendance(facultyAttendanceDate)"
+          />
+          <button type="button" class="btn-sm btn-outline" (click)="loadFacultyDailyAttendance()">↻ Refresh</button>
+          <button type="button" class="btn-sm btn-primary" (click)="openFacultyRegister('monthly')">
+            📊 Past Register &amp; CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Faculty Attendance KPIs -->
+      <div class="faculty-kpis">
+        <div class="kpi-item">
+          <span class="kpi-num">{{ fao.stats?.totalFaculty ?? fao.totalActiveTrainers ?? 0 }}</span>
+          <span class="kpi-label">Total Faculty</span>
+        </div>
+        <div class="kpi-item text-green">
+          <span class="kpi-num">✓ {{ fao.stats?.present ?? fao.presentCount ?? 0 }}</span>
+          <span class="kpi-label">Checked In (Present)</span>
+        </div>
+        <div class="kpi-item text-amber">
+          <span class="kpi-num">🏖️ {{ fao.stats?.onLeave ?? fao.onLeaveCount ?? 0 }}</span>
+          <span class="kpi-label">On Leave</span>
+        </div>
+        <div class="kpi-item text-red">
+          <span class="kpi-num">⚠️ {{ fao.stats?.absent ?? fao.absentOrNotCheckedInCount ?? 0 }}</span>
+          <span class="kpi-label">Uninformed / Not Checked In</span>
+        </div>
+      </div>
+
+      <!-- Active Alerts Section -->
+      <div *ngIf="fao.alerts?.length > 0" class="absence-alerts-container">
+        <div class="alert-head">
+          <span class="alert-bell-icon">🚨</span>
+          <strong>{{ fao.alerts.length }} Faculty Absence Alert(s) Requiring Attention Today</strong>
+        </div>
+
+        <div class="absence-alerts-grid">
+          <div *ngFor="let alert of fao.alerts" class="absence-alert-card" [class.border-red]="alert.status === 'ABSENT'" [class.border-amber]="alert.status === 'ON_LEAVE'">
+            <div class="alert-card-header">
+              <div class="trainer-info">
+                <strong>{{ alert.trainerName }}</strong>
+                <span class="muted font-mono">({{ alert.trainerId }})</span>
+              </div>
+              <span class="status-pill" [class.status-leave]="alert.status === 'ON_LEAVE'" [class.status-absent]="alert.status === 'ABSENT'">
+                ● {{ alert.status === 'ON_LEAVE' ? 'ON LEAVE' : 'NOT CHECKED IN' }}
+              </span>
+            </div>
+
+            <div class="alert-reason-box">
+              <span class="reason-tag">{{ alert.leaveType || 'ABSENCE' }}</span>
+              <p class="reason-text">"{{ alert.leaveReason || 'No reason provided by faculty member yet' }}"</p>
+              <div class="handover-text" *ngIf="alert.handoverNotes">
+                <em>Handover Instructions:</em> {{ alert.handoverNotes }}
+              </div>
+            </div>
+
+            <div class="alert-impact-strip">
+              <span>👥 <strong>{{ alert.affectedStudentsCount }}</strong> Affected Students</span>
+              <span>📚 <strong>{{ alert.affectedBatches?.length || 0 }}</strong> Batches Affected</span>
+            </div>
+
+            <!-- Handover & Backup Trainer Selection -->
+            <div class="alert-actions-bar">
+              <div class="backup-select-group" *ngIf="alert.backupOptions?.length > 0">
+                <label for="backup-{{ alert.trainerId }}">Assign Backup Faculty:</label>
+                <select id="backup-{{ alert.trainerId }}" class="form-input form-input-sm" [(ngModel)]="selectedBackupTrainerMap[alert.trainerId]">
+                  <option *ngFor="let opt of alert.backupOptions" [value]="opt.trainerId">
+                    {{ opt.trainerName }} (Capacity: {{ opt.currentStudentCount }}/{{ opt.maxCapacity }})
+                  </option>
+                </select>
+              </div>
+              <div *ngIf="alert.backupOptions?.length === 0" class="no-backup-text">
+                No immediate backup faculty available with free capacity.
+              </div>
+
+              <div class="alert-btn-row">
+                <button
+                  type="button"
+                  class="btn-sm btn-success"
+                  [disabled]="checkingInTrainerId === alert.trainerId"
+                  (click)="markTrainerPresent(alert.trainerId)"
+                  title="Mark trainer as checked in and present for today"
+                >
+                  {{ checkingInTrainerId === alert.trainerId ? 'Checking in...' : '✓ Mark Check-In (Present)' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-sm btn-danger"
+                  [disabled]="markingAbsentTrainerId === alert.trainerId || acknowledgingTrainerId === alert.trainerId"
+                  (click)="markTrainerAbsent(alert.trainerId)"
+                  title="Mark trainer as absent for today"
+                >
+                  {{ (markingAbsentTrainerId === alert.trainerId || acknowledgingTrainerId === alert.trainerId) ? 'Marking absent...' : '✕ Mark as Absent' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="fao.alerts?.length === 0" class="all-clear-banner">
+        <span class="clear-icon">🟢</span>
+        <span>All active faculty are checked in or accounted for today. No schedule conflicts detected.</span>
+      </div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="metrics-grid" *ngIf="overview as ov">
+      <div class="metric-card clickable" (click)="filterByOverviewCard('trainers')" title="View all trainers">
+        <div class="metric-icon blue">👨‍🏫</div>
+        <div class="metric-data">
+          <span class="metric-title">Total Trainers</span>
+          <span class="metric-value">{{ ov.totalTrainers }}</span>
+        </div>
+      </div>
+      <div class="metric-card clickable" (click)="filterByOverviewCard('available')" title="View available trainers">
+        <div class="metric-icon green">✓</div>
+        <div class="metric-data">
+          <span class="metric-title">Available Trainers</span>
+          <span class="metric-value">{{ ov.availableTrainers }}</span>
+        </div>
+      </div>
+      <div class="metric-card clickable" (click)="filterByOverviewCard('absent')" title="View absent/on leave trainers">
+        <div class="metric-icon red">⏸</div>
+        <div class="metric-data">
+          <span class="metric-title">Absent / On Leave</span>
+          <span class="metric-value">{{ ov.absentTrainers }}</span>
+          <span class="card-alert-badge" *ngIf="ov.absentTrainersWithStudents as abAlerts" [class.d-none]="abAlerts.length === 0">
+            {{ abAlerts.length }} Need Coverage
+          </span>
+        </div>
+      </div>
+      <div class="metric-card clickable" (click)="filterByOverviewCard('students')" title="View all active enrolled students">
+        <div class="metric-icon purple">🎓</div>
+        <div class="metric-data">
+          <span class="metric-title">Active Students</span>
+          <span class="metric-value">{{ ov.totalActiveStudents }}</span>
+        </div>
+      </div>
+      <div class="metric-card clickable" (click)="filterByOverviewCard('unassigned')" title="View unassigned students">
+        <div class="metric-icon orange">⏳</div>
+        <div class="metric-data">
+          <span class="metric-title">Unassigned Students</span>
+          <span class="metric-value">{{ ov.unassignedStudents }}</span>
+        </div>
+      </div>
+      <div class="metric-card clickable" (click)="filterByOverviewCard('courses-unassigned')" title="View courses lacking trainers">
+        <div class="metric-icon yellow">⚠️</div>
+        <div class="metric-data">
+          <span class="metric-title">Courses w/o Trainer</span>
+          <span class="metric-value">{{ ov.coursesWithoutTrainers }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trainer Workload & Capacity Table -->
+    <div class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Trainer Workload & Availability Matrix</h3>
+          <p class="panel-sub">Live capacity monitoring, active student assignments, and availability status.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn-primary btn-sm" (click)="openFacultyRegister('monthly')">
+            👨‍🏫 View Faculty Attendance Register &amp; CSV
+          </button>
+          <button type="button" class="btn-sm btn-outline" (click)="loadOverview()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Trainer ID</th>
+              <th>Trainer Name</th>
+              <th>Specialization</th>
+              <th>Availability</th>
+              <th>Qualified Tracks</th>
+              <th>Current Students / Max</th>
+              <th>Capacity Utilization</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let tw of overview?.trainerWorkloads">
+              <td class="code-cell">{{ tw.id }}</td>
+              <td>
+                <div class="user-cell">
+                  <strong>{{ tw.name }}</strong>
+                  <span class="muted">{{ tw.email }}</span>
+                </div>
+              </td>
+              <td>{{ tw.specialization || "General" }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getAvailabilityBadgeClass(tw.availability)">
+                  ● {{ tw.availability.replace('_', ' ') }}
+                </span>
+                <div *ngIf="tw.checkInTime" class="muted font-mono" style="font-size: 11px; margin-top: 3px;">
+                  Checked in: {{ tw.checkInTime | date:'shortTime' }}
+                </div>
+              </td>
+              <td>
+                <div class="tags-row" *ngIf="tw.qualifiedCourses.length; else noCourses">
+                  <span class="tag-pill" *ngFor="let c of tw.qualifiedCourses.slice(0, 2)">{{ c }}</span>
+                  <span class="tag-more" *ngIf="tw.qualifiedCourses.length > 2">+{{ tw.qualifiedCourses.length - 2 }}</span>
+                </div>
+                <ng-template #noCourses><span class="muted-italic">None specified</span></ng-template>
+              </td>
+              <td>
+                <strong>{{ tw.currentStudentCount }}</strong> / {{ tw.maxCapacity }}
+                <span class="remaining-text">({{ tw.remainingCapacity || 0 }} left)</span>
+              </td>
+              <td>
+                <div class="progress-wrap">
+                  <div
+                    class="progress-bar"
+                    [class.bar-full]="(tw.utilizationPercent || 0) >= 100"
+                    [class.bar-high]="(tw.utilizationPercent || 0) >= 80 && (tw.utilizationPercent || 0) < 100"
+                    [class.bar-normal]="(tw.utilizationPercent || 0) < 80"
+                    [style.width.%]="tw.utilizationPercent || 0"
+                  ></div>
+                  <span class="progress-label">{{ tw.utilizationPercent || 0 }}%</span>
+                </div>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button type="button" class="btn-icon" title="View Profile" (click)="viewTrainerProfile(tw)">👤</button>
+                  
+                  <button type="button" class="btn-icon" title="Edit Trainer" (click)="openEditTrainerModal(tw)">✏️</button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!overview?.trainerWorkloads?.length">
+              <td colspan="8" class="empty-cell">No trainers registered yet. Click "+ Add Trainer" to register one.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: TRAINER DIRECTORY -->
+  <section *ngIf="!loading && selectedTab === 'trainers'" class="tab-content">
+    <div class="card-panel">
+      <!-- Toolbar -->
+      <div class="toolbar-grid">
+        <div class="search-box">
+          <input
+            type="text"
+            [(ngModel)]="trainerSearch"
+            (ngModelChange)="loadTrainers()"
+            placeholder="Search by name, email, specialization, skill, or ID..."
+          />
+        </div>
+        <div class="filter-group">
+          <select [(ngModel)]="trainerStatusFilter" (ngModelChange)="loadTrainers()">
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+          <select [(ngModel)]="trainerAvailabilityFilter" (ngModelChange)="loadTrainers()">
+            <option value="ALL">All Availabilities</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="ABSENT">Absent</option>
+            <option value="ON_LEAVE">On Leave</option>
+            <option value="UNAVAILABLE">Unavailable</option>
+          </select>
+          <select [(ngModel)]="trainerEmploymentFilter" (ngModelChange)="loadTrainers()">
+            <option value="ALL">All Employment Types</option>
+            <option value="FULL_TIME">Full Time</option>
+            <option value="PART_TIME">Part Time</option>
+            <option value="CONTRACT">Contract</option>
+          </select>
+          <button type="button" class="btn-outline" (click)="exportTrainers()" title="Export Directory to CSV">
+            📥 Export CSV
+          </button>
+          <button type="button" class="btn-primary" (click)="openAddTrainerModal()">
+            + Add Trainer
+          </button>
+        </div>
+      </div>
+
+      <!-- Trainers Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Trainer ID</th>
+              <th>Name & Contact</th>
+              <th>Qualification & Specialization</th>
+              <th>Skills</th>
+              <th>Employment</th>
+              <th>Capacity</th>
+              <th>Assigned Students</th>
+              <th>Availability</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let trainer of trainers">
+              <td class="code-cell font-bold">{{ trainer.id }}</td>
+              <td>
+                <div class="user-cell">
+                  <span class="user-name">{{ trainer.name }}</span>
+                  <span class="user-contact">{{ trainer.email }}</span>
+                  <span class="user-contact" *ngIf="trainer.phone">📞 {{ trainer.phone }}</span>
+                  <div *ngIf="trainer.averageRating" class="rating-pill" [title]="trainer.totalRatings + ' student reviews'">
+                    ⭐ {{ trainer.averageRating.toFixed(1) }} <small>({{ trainer.totalRatings }})</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div>{{ trainer.specialization || "General" }}</div>
+                <small class="muted">{{ trainer.qualification || "Not specified" }}</small>
+              </td>
+              <td>
+                <div class="tags-row" *ngIf="trainer.skills.length; else noSkills">
+                  <span class="tag-pill" *ngFor="let skill of trainer.skills.slice(0, 3)">{{ skill }}</span>
+                  <span class="tag-more" *ngIf="trainer.skills.length > 3">+{{ trainer.skills.length - 3 }}</span>
+                </div>
+                <ng-template #noSkills><span class="muted-italic">None</span></ng-template>
+              </td>
+              <td>
+                <span class="badge-neutral">{{ trainer.employmentType.replace('_', ' ') }}</span>
+                <div *ngIf="trainer.hourlyRate" class="text-muted-sm">₹{{ trainer.hourlyRate }}/hr</div>
+              </td>
+              <td>
+                <span class="capacity-badge" [class.badge-full]="trainer.currentStudentCount >= trainer.maxCapacity">
+                  {{ trainer.currentStudentCount }} / {{ trainer.maxCapacity }}
+                </span>
+              </td>
+              <td>
+                <div class="trainer-students-cell">
+                  <span class="badge-student-count" [class.badge-empty]="(trainer.currentStudentCount || 0) === 0">
+                    👥 {{ trainer.currentStudentCount || 0 }}
+                  </span>
+                  <button
+                    type="button"
+                    class="btn-view-students"
+                    (click)="openTrainerRoster(trainer)"
+                    title="View assigned students for {{ trainer.name }}"
+                  >
+                    👁️ View Students
+                  </button>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" [ngClass]="getAvailabilityBadgeClass(trainer.availability)">
+                  ● {{ trainer.availability.replace('_', ' ') }}
+                </span>
+              </td>
+              <td>
+                <span class="status-badge" [class.badge-green]="trainer.status === 'ACTIVE'" [class.badge-neutral]="trainer.status === 'INACTIVE'">
+                  {{ trainer.status }}
+                </span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button type="button" class="btn-icon" title="View Profile" (click)="viewTrainerProfile(trainer)">👤</button>
+                  <button type="button" class="btn-icon" title="Edit Trainer" (click)="openEditTrainerModal(trainer)">✏️</button>
+                  
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [title]="trainer.status === 'ACTIVE' ? 'Deactivate' : 'Activate'"
+                    (click)="toggleTrainerStatus(trainer)"
+                  >
+                    {{ trainer.status === 'ACTIVE' ? '🚫' : '✓' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!trainers.length">
+              <td colspan="9" class="empty-cell">No trainers match your filter criteria.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: BATCH & SCHEDULE MANAGEMENT -->
+  <section *ngIf="!loading && selectedTab === 'batches'" class="tab-content">
+    <div class="card-panel">
+      <!-- Toolbar -->
+      <div class="toolbar-grid">
+        <div class="search-box">
+          <input
+            type="text"
+            [(ngModel)]="batchSearch"
+            placeholder="Search batches by name, course, or trainer..."
+          />
+        </div>
+        <div class="filter-group">
+          <select [(ngModel)]="batchStatusFilter" (ngModelChange)="loadBatches()">
+            <option value="ALL">All Statuses</option>
+            <option value="UPCOMING">Upcoming</option>
+            <option value="ACTIVE">Active</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
+          <button type="button" class="btn-primary" (click)="openAddBatchModal()">
+            + Create Batch
+          </button>
+          <button type="button" class="btn-secondary" (click)="openHolidaysModal()" title="Manage institutional & government holidays">
+            🏛️ Institutional Holidays ({{ institutionalHolidays.length }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Batches Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Batch Name</th>
+              <th>Course Track</th>
+              <th>Assigned Trainer</th>
+              <th>Time Slot &amp; Days</th>
+              <th>Location / Meeting</th>
+              <th>Cohort Dates</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let b of filteredBatches">
+              <td>
+                <div class="user-cell">
+                  <span class="user-name">{{ b.batchName }}</span>
+                  <span class="muted" *ngIf="b.notes">{{ b.notes }}</span>
+                </div>
+              </td>
+              <td><span class="course-badge">{{ b.courseName }}</span></td>
+              <td>
+                <div class="trainer-pill-box">
+                  <span class="trainer-avatar">👨‍🏫</span>
+                  <strong>{{ b.trainerName }}</strong>
+                </div>
+              </td>
+              <td>
+                <div><strong>{{ b.timeSlot }}</strong></div>
+                <div class="tags-row" *ngIf="b.days && b.days.length">
+                  <span class="tag-pill" *ngFor="let d of b.days">{{ d }}</span>
+                </div>
+              </td>
+              <td>
+                <div *ngIf="b.meetingLink" class="meeting-link-wrap">
+                  <a [href]="b.meetingLink" target="_blank" rel="noopener noreferrer" class="link-btn">
+                    🎥 Join Session
+                  </a>
+                </div>
+                <small class="muted" *ngIf="b.classroomLocation">{{ b.classroomLocation }}</small>
+              </td>
+              <td>
+                <div>{{ b.startDate | date:'mediumDate' }}</div>
+                <small class="muted" *ngIf="b.endDate">to {{ b.endDate | date:'mediumDate' }}</small>
+              </td>
+              <td>
+                <span
+                  class="status-badge"
+                  [class.badge-green]="b.status === 'ACTIVE'"
+                  [class.badge-blue]="b.status === 'UPCOMING'"
+                  [class.badge-neutral]="b.status === 'COMPLETED'"
+                >
+                  ● {{ b.status }}
+                </span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button type="button" class="btn-icon" title="Edit Batch" (click)="openEditBatchModal(b)">✏️</button>
+                  <button type="button" class="btn-icon text-danger" title="Delete Batch" (click)="deleteBatch(b)">🗑️</button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!batches.length">
+              <td colspan="8" class="empty-cell">No training batches created yet. Click "+ Create Batch" to set up a new cohort.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: ATTENDANCE & SCORECARDS -->
+  <section *ngIf="!loading && selectedTab === 'attendance'" class="tab-content">
+    <div class="attendance-layout">
+      <!-- Attendance Sub-View Switcher Strip -->
+      <div class="attendance-subnav-strip">
+        <div class="subnav-tabs">
+          <button
+            type="button"
+            class="subnav-btn"
+            [class.active]="attendanceSubView === 'MONTHLY_REGISTER'"
+            (click)="setAttendanceSubView('MONTHLY_REGISTER')"
+          >
+            <span class="subnav-icon">📊</span>
+            <span>Monthly Attendance Register</span>
+            <span class="subnav-pill alert" *ngIf="monthlyRegisterSummary.atRiskCount">
+              {{ monthlyRegisterSummary.atRiskCount }} At Risk
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="subnav-btn"
+            [class.active]="attendanceSubView === 'DAILY_LOGGER'"
+            (click)="setAttendanceSubView('DAILY_LOGGER')"
+          >
+            <span class="subnav-icon">📝</span>
+            <span>Daily Classroom Logger</span>
+          </button>
+
+          <button
+            type="button"
+            class="subnav-btn"
+            [class.active]="attendanceSubView === 'DATE_ARCHIVE'"
+            (click)="setAttendanceSubView('DATE_ARCHIVE')"
+          >
+            <span class="subnav-icon">📅</span>
+            <span>Date-wise Session Archive</span>
+          </button>
+
+          <button
+            type="button"
+            class="subnav-btn"
+            [class.active]="attendanceSubView === 'FACULTY_REGISTER'"
+            (click)="setAttendanceSubView('FACULTY_REGISTER')"
+          >
+            <span class="subnav-icon">👨‍🏫</span>
+            <span>Trainer Allocation Attendance</span>
+          </button>
+        </div>
+
+        <div class="subnav-actions" *ngIf="attendanceSubView === 'MONTHLY_REGISTER'">
+          <div class="display-mode-group">
+            <button
+              type="button"
+              class="btn-mode-toggle"
+              [class.active]="registerDisplayMode === 'MATRIX'"
+              (click)="registerDisplayMode = 'MATRIX'"
+              title="View full day-by-day calendar matrix"
+            >
+              ▦ Matrix View
+            </button>
+            <button
+              type="button"
+              class="btn-mode-toggle"
+              [class.active]="registerDisplayMode === 'SUMMARY'"
+              (click)="registerDisplayMode = 'SUMMARY'"
+              title="View student progress summary cards"
+            >
+              📋 Summary View
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn-outline btn-sm"
+            (click)="exportMonthlyRegisterCsv()"
+            title="Download full month attendance spreadsheet"
+          >
+            📥 Export Monthly CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SUB-VIEW 1: MONTHLY ATTENDANCE REGISTER & MATRIX -->
+      <!-- ======================================================== -->
+      <div *ngIf="attendanceSubView === 'MONTHLY_REGISTER'">
+        <!-- SECTION 1A: CANDIDATE STUDENTS REGISTER -->
+        <div class="card-panel student-register-panel" style="border-top: 4px solid #2563eb;">
+          <div class="panel-header">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                <span style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">
+                  🎓 Candidate Students Cohort
+                </span>
+              </div>
+              <h3 style="margin:0; font-size:1.25rem;">Candidate Students Monthly Attendance Register &amp; Progress Matrix</h3>
+              <p class="panel-sub" style="margin:0.25rem 0 0 0;">
+                Audited month-wise attendance record showing daily attendance marks (P / L / A) and automated percentage calculation.
+              </p>
+            </div>
+            <button type="button" class="btn-outline btn-sm" (click)="loadMonthlyRegister()" title="Refresh monthly data">
+              🔄 Refresh Student Register
+            </button>
+          </div>
+
+        <!-- Monthly Metrics Ribbon -->
+        <div class="mini-metrics-strip" *ngIf="monthlyRegisterSummary as mSum">
+          <div class="mini-metric">
+            <span class="mini-val">{{ mSum.totalStudents }}</span>
+            <span class="mini-lbl">Active Students</span>
+          </div>
+          <div class="mini-metric">
+            <span
+              class="mini-val font-bold"
+              [class.text-success]="mSum.avgAttendancePercent >= 80"
+              [class.text-warning]="mSum.avgAttendancePercent >= 70 && mSum.avgAttendancePercent < 80"
+              [class.text-danger]="mSum.avgAttendancePercent < 70"
+            >
+              {{ mSum.avgAttendancePercent }}%
+            </span>
+            <span class="mini-lbl">Avg Monthly Rate</span>
+          </div>
+          <div class="mini-metric" [class.text-danger]="mSum.atRiskCount > 0">
+            <span class="mini-val font-bold">{{ mSum.atRiskCount }}</span>
+            <span class="mini-lbl">At Risk (&lt;75%)</span>
+          </div>
+          <div class="mini-metric" [class.text-warning]="mSum.consecutiveAbsentCount > 0">
+            <span class="mini-val">{{ mSum.consecutiveAbsentCount }}</span>
+            <span class="mini-lbl">3+ Consec. Absents</span>
+          </div>
+        </div>
+
+        <!-- Toolbar & Risk Filter Chips -->
+        <div class="toolbar-grid" style="margin-top: 1rem; margin-bottom: 0.75rem;">
+          <div class="filter-group">
+            <label class="inline-control">
+              <span class="control-lbl">Month:</span>
+              <input
+                type="month"
+                [(ngModel)]="selectedRegisterMonth"
+                (ngModelChange)="loadMonthlyRegister()"
+                class="input-date"
+              />
+            </label>
+            <label class="inline-control">
+              <span class="control-lbl">Course:</span>
+              <select [(ngModel)]="registerCourseFilter">
+                <option value="ALL">All Courses</option>
+                <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+              </select>
+            </label>
+            <label class="inline-control">
+              <span class="control-lbl">Trainer:</span>
+              <select [(ngModel)]="registerTrainerFilter">
+                <option value="ALL">All Trainers</option>
+                <option *ngFor="let t of trainers" [value]="t.id">{{ t.name }}</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Risk Filter Chips -->
+          <div class="risk-chips-group">
+            <button
+              type="button"
+              class="chip-filter"
+              [class.active]="registerRiskFilter === 'ALL'"
+              (click)="registerRiskFilter = 'ALL'"
+            >
+              All Students ({{ monthlyRegisterRows.length }})
+            </button>
+            <button
+              type="button"
+              class="chip-filter chip-danger"
+              [class.active]="registerRiskFilter === 'AT_RISK'"
+              (click)="registerRiskFilter = 'AT_RISK'"
+            >
+              ⚠️ At Risk &lt;75% ({{ monthlyRegisterSummary.atRiskCount }})
+            </button>
+            <button
+              type="button"
+              class="chip-filter chip-warning"
+              [class.active]="registerRiskFilter === 'CONSECUTIVE_ABSENT'"
+              (click)="registerRiskFilter = 'CONSECUTIVE_ABSENT'"
+            >
+              🚨 3+ Consec. Absents ({{ monthlyRegisterSummary.consecutiveAbsentCount }})
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loadingMonthlyRegister" class="loading-state-inline">
+          <div class="spinner-sm"></div> Compiling monthly attendance matrix for {{ selectedRegisterMonth }}...
+        </div>
+
+        <!-- Matrix Table Mode -->
+        <div class="table-container matrix-scroll-container" *ngIf="!loadingMonthlyRegister && registerDisplayMode === 'MATRIX'">
+          <table class="data-table matrix-table">
+            <thead>
+              <tr>
+                <th class="sticky-col col-name">Candidate Name</th>
+                <th class="sticky-col col-course">Course Track</th>
+                <th class="sticky-col col-trainer">Assigned Trainer</th>
+                <!-- Day Columns -->
+                <th
+                  *ngFor="let day of daysInSelectedMonth"
+                  class="day-col-header"
+                  (click)="jumpToDateArchiveFromMatrix(day)"
+                  [title]="'Click to view session details for ' + selectedRegisterMonth + '-' + (day < 10 ? '0' + day : day)"
+                >
+                  {{ day }}
+                </th>
+                <!-- Summary Columns -->
+                <th class="summary-col">Held</th>
+                <th class="summary-col text-success">P</th>
+                <th class="summary-col text-warning">L</th>
+                <th class="summary-col text-danger">A</th>
+                <th class="summary-col col-pct">Attendance %</th>
+                <th class="summary-col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of filteredMonthlyRegisterRows">
+                <td class="sticky-col col-name">
+                  <div class="user-cell clickable-user" (click)="viewStudentDetail(row.studentId)" title="Click to view candidate 360 profile">
+                    <strong class="link-text">{{ row.studentName }} ↗</strong>
+                    <span class="code-cell font-small">{{ row.studentId }}</span>
+                  </div>
+                </td>
+                <td class="sticky-col col-course">
+                  <span class="course-badge">{{ row.enrolledCourse }}</span>
+                </td>
+                <td class="sticky-col col-trainer">
+                  <small class="trainer-name-text">{{ row.trainerName }}</small>
+                </td>
+                <!-- Day Cells -->
+                <td *ngFor="let day of daysInSelectedMonth" class="day-cell">
+                  <span
+                    *ngIf="row.dayStatuses[day] as dayStat"
+                    class="day-pill"
+                    [class.pill-p]="dayStat.status === 'PRESENT'"
+                    [class.pill-l]="dayStat.status === 'LATE'"
+                    [class.pill-a]="dayStat.status === 'ABSENT'"
+                    [title]="dayStat.date + ' | ' + dayStat.status + (dayStat.topic ? ' | Topic: ' + dayStat.topic : '') + (dayStat.remarks ? ' | ' + dayStat.remarks : '')"
+                  >
+                    {{ dayStat.status.charAt(0) }}
+                  </span>
+                  <span *ngIf="!row.dayStatuses[day]" class="day-empty">&mdash;</span>
+                </td>
+                <!-- Summary Cells -->
+                <td class="summary-col font-bold">{{ row.totalHeld }}</td>
+                <td class="summary-col text-success font-bold">{{ row.presentCount }}</td>
+                <td class="summary-col text-warning">
+                  {{ row.lateCount }}
+                  <small *ngIf="(row.convertedLeaveDays ?? 0) > 0" style="display:block; font-size:0.7rem; color:#b45309; font-weight:700;" title="3 Late sessions = 1 Day absence deduction">
+                    -{{ row.convertedLeaveDays }}d
+                  </small>
+                  <small *ngIf="!(row.convertedLeaveDays ?? 0) && (row.activeStrikes ?? 0) > 0" style="display:block; font-size:0.7rem; color:#92400e;" title="Strikes towards 1-day absence">
+                    ({{ row.activeStrikes }}/3)
+                  </small>
+                </td>
+                <td class="summary-col text-danger font-bold">
+                  {{ row.absentCount }}
+                  <small *ngIf="(row.convertedLeaveDays ?? 0) > 0" style="display:block; font-size:0.7rem; color:#b45309;" title="3 missed logins = 1 Day Leave deduction">
+                    ({{ row.convertedLeaveDays }}d leave)
+                  </small>
+                  <small *ngIf="!(row.convertedLeaveDays ?? 0) && (row.activeStrikes ?? 0) > 0" style="display:block; font-size:0.7rem; color:#92400e;" title="Strikes towards 1-day leave deduction">
+                    ({{ row.activeStrikes }}/3)
+                  </small>
+                </td>
+                <td class="summary-col col-pct">
+                  <span
+                    class="percent-badge"
+                    [class.badge-green]="row.attendancePercent >= 80"
+                    [class.badge-yellow]="row.attendancePercent >= 70 && row.attendancePercent < 80"
+                    [class.badge-red]="row.attendancePercent < 70"
+                  >
+                    {{ row.attendancePercent }}%
+                  </span>
+                </td>
+                <td class="summary-col">
+                  <button type="button" class="btn-xs btn-outline" (click)="viewStudentDetail(row.studentId)" title="View 360 profile">
+                    👤 360°
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!filteredMonthlyRegisterRows.length">
+                <td [attr.colspan]="daysInSelectedMonth.length + 9" class="empty-cell">
+                  No enrolled candidates match the selected monthly filters.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary Cards Mode -->
+        <div class="summary-cards-grid" *ngIf="!loadingMonthlyRegister && registerDisplayMode === 'SUMMARY'">
+          <div *ngFor="let row of filteredMonthlyRegisterRows" class="student-summary-card">
+            <div class="card-head">
+              <div>
+                <strong class="link-text" (click)="viewStudentDetail(row.studentId)">{{ row.studentName }} ↗</strong>
+                <div class="code-cell font-small">{{ row.studentId }} &bull; {{ row.enrolledCourse }}</div>
+              </div>
+              <span
+                class="percent-badge"
+                [class.badge-green]="row.attendancePercent >= 80"
+                [class.badge-yellow]="row.attendancePercent >= 70 && row.attendancePercent < 80"
+                [class.badge-red]="row.attendancePercent < 70"
+              >
+                {{ row.attendancePercent }}%
+              </span>
+            </div>
+
+            <div class="progress-wrap" style="margin: 0.75rem 0;">
+              <div
+                class="progress-bar"
+                [class.bar-normal]="row.attendancePercent >= 80"
+                [class.bar-high]="row.attendancePercent >= 70 && row.attendancePercent < 80"
+                [class.bar-full]="row.attendancePercent < 70"
+                [style.width.%]="row.attendancePercent"
+              ></div>
+            </div>
+
+            <div class="card-stats-row">
+              <div><small class="muted">Classes Held:</small> <strong>{{ row.totalHeld }}</strong></div>
+              <div><small class="muted text-success">Present:</small> <strong class="text-success">{{ row.presentCount }}</strong></div>
+              <div><small class="muted text-danger">Absent:</small> <strong class="text-danger">{{ row.absentCount }}</strong></div>
+              <div><small class="muted">Trainer:</small> <span>{{ row.trainerName }}</span></div>
+            </div>
+
+            <div class="card-footer-strip">
+              <span *ngIf="row.isAtRisk" class="risk-tag-danger">⚠️ Low Attendance Alert (&lt;75%)</span>
+              <span *ngIf="!row.isAtRisk && row.consecutiveAbsents >= 3" class="risk-tag-warning">🚨 3+ Days Absent</span>
+              <span *ngIf="!row.isAtRisk && row.consecutiveAbsents < 3" class="risk-tag-good">✓ Regular Standing</span>
+              <button type="button" class="btn-xs btn-outline" (click)="viewStudentDetail(row.studentId)">
+                View 360° Profile
+              </button>
+            </div>
+          </div>
+          <div *ngIf="!filteredMonthlyRegisterRows.length" class="empty-state-box">
+            No students found matching your filters.
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <!-- ======================================================== -->
+      <!-- SUB-VIEW 2: DAILY ATTENDANCE LOGGER (WHAT HAPPENS TODAY) -->
+      <!-- ======================================================== -->
+      <div *ngIf="attendanceSubView === 'DAILY_LOGGER'">
+        <!-- Panel 1: Attendance Logging -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Daily Attendance &amp; Session Progress</h3>
+              <p class="panel-sub">Mark student presence for live training classes and log curriculum topics covered today.</p>
+            </div>
+            <div class="panel-actions">
+              <div class="quick-mark-group">
+                <button type="button" class="btn-outline btn-sm" (click)="markAllAttendanceStatus('PRESENT')" title="Mark all displayed students present">
+                  ✓ All Present
+                </button>
+                <button type="button" class="btn-outline btn-sm" (click)="markAllAttendanceStatus('ABSENT')" title="Mark all displayed students absent">
+                  ✗ All Absent
+                </button>
+              </div>
+              <button type="button" class="btn-primary" [disabled]="attendanceSaving || !attendanceItems.length" (click)="saveAttendanceBatch()">
+                {{ attendanceSaving ? 'Saving...' : '💾 Save Attendance' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="toolbar-grid" style="margin-bottom: 1rem;">
+            <div class="filter-group">
+              <label class="inline-control">
+                <span class="control-lbl">Date:</span>
+                <input type="date" [(ngModel)]="attendanceDate" class="input-date" />
+              </label>
+              <label class="inline-control">
+                <span class="control-lbl">Course:</span>
+                <select [(ngModel)]="attendanceCourseFilter" (ngModelChange)="initAttendanceGrid()">
+                  <option value="ALL">All Courses</option>
+                  <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+                </select>
+              </label>
+              <label class="inline-control">
+                <span class="control-lbl">Trainer:</span>
+                <select [(ngModel)]="attendanceTrainerFilter" (ngModelChange)="initAttendanceGrid()">
+                  <option value="ALL">All Trainers</option>
+                  <option *ngFor="let t of trainers" [value]="t.id">{{ t.name }} ({{ t.id }})</option>
+                </select>
+              </label>
+            </div>
+            <div class="search-box">
+              <input
+                type="text"
+                [(ngModel)]="topicCoveredToday"
+                placeholder="Topic covered today (e.g. Spring Boot Microservices, REST APIs)..."
+              />
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Course</th>
+                  <th>Instructor</th>
+                  <th>Attendance Status</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of attendanceItems">
+                  <td>
+                    <div class="user-cell clickable-user" (click)="viewStudentDetail(item.studentId)" title="Click to view student profile & history">
+                      <strong class="link-text">{{ item.studentName }} ↗</strong>
+                      <span class="code-cell font-small">{{ item.studentId }}</span>
+                    </div>
+                  </td>
+                  <td><span class="course-badge">{{ item.courseName }}</span></td>
+                  <td>{{ item.trainerName }}</td>
+                  <td>
+                    <div class="status-btn-group">
+                      <button
+                        type="button"
+                        class="btn-toggle"
+                        [class.active-green]="item.status === 'PRESENT'"
+                        (click)="setStudentAttendanceStatus(item, 'PRESENT')"
+                      >
+                        Present
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-toggle"
+                        [class.active-yellow]="item.status === 'LATE'"
+                        (click)="setStudentAttendanceStatus(item, 'LATE')"
+                      >
+                        Late
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-toggle"
+                        [class.active-red]="item.status === 'ABSENT'"
+                        (click)="setStudentAttendanceStatus(item, 'ABSENT')"
+                      >
+                        Absent
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      [(ngModel)]="item.remarks"
+                      placeholder="e.g. Joined 15m late, good lab submission"
+                      class="input-sm"
+                    />
+                  </td>
+                </tr>
+                <tr *ngIf="!attendanceItems.length">
+                  <td colspan="5" class="empty-cell">No allocated students available for attendance tracking under the selected filters.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel 1B: Saved Attendance Register & Audit History -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Saved Attendance Register &amp; History Log</h3>
+              <p class="panel-sub">Inspect verified session registers, attendance percentages, and historical logs for students and trainers.</p>
+            </div>
+            <button type="button" class="btn-outline btn-sm" (click)="loadSavedAttendance()" title="Refresh saved attendance records">
+              🔄 Refresh Register
+            </button>
+          </div>
+
+          <!-- Metrics Ribbon -->
+          <div class="mini-metrics-strip" *ngIf="savedAttendanceSummary as sum">
+            <div class="mini-metric">
+              <span class="mini-val">{{ sum.total }}</span>
+              <span class="mini-lbl">Saved Records</span>
+            </div>
+            <div class="mini-metric text-success">
+              <span class="mini-val">{{ sum.present }}</span>
+              <span class="mini-lbl">Present</span>
+            </div>
+            <div class="mini-metric text-warning">
+              <span class="mini-val">{{ sum.late }}</span>
+              <span class="mini-lbl">Late</span>
+            </div>
+            <div class="mini-metric text-danger">
+              <span class="mini-val">{{ sum.absent }}</span>
+              <span class="mini-lbl">Absent</span>
+            </div>
+            <div class="mini-metric">
+              <span class="mini-val font-bold" [class.text-success]="sum.percent >= 80" [class.text-danger]="sum.percent < 70">
+                {{ sum.percent }}%
+              </span>
+              <span class="mini-lbl">Attendance Rate</span>
+            </div>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="toolbar-grid" style="margin-top: 1rem; margin-bottom: 1rem;">
+            <div class="filter-group">
+              <label class="inline-control">
+                <span class="control-lbl">Date:</span>
+                <input type="date" [(ngModel)]="savedAttendanceDateFilter" (ngModelChange)="loadSavedAttendance()" class="input-date" />
+              </label>
+              <label class="inline-control">
+                <span class="control-lbl">Trainer:</span>
+                <select [(ngModel)]="savedAttendanceTrainerFilter" (ngModelChange)="loadSavedAttendance()">
+                  <option value="ALL">All Trainers</option>
+                  <option *ngFor="let t of trainers" [value]="t.id">{{ t.name }}</option>
+                </select>
+              </label>
+              <label class="inline-control">
+                <span class="control-lbl">Course:</span>
+                <select [(ngModel)]="savedAttendanceCourseFilter" (ngModelChange)="loadSavedAttendance()">
+                  <option value="ALL">All Courses</option>
+                  <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+                </select>
+              </label>
+              <button
+                *ngIf="savedAttendanceDateFilter || savedAttendanceTrainerFilter !== 'ALL' || savedAttendanceCourseFilter !== 'ALL'"
+                type="button"
+                class="btn-sm btn-outline"
+                (click)="savedAttendanceDateFilter = ''; savedAttendanceTrainerFilter = 'ALL'; savedAttendanceCourseFilter = 'ALL'; loadSavedAttendance()"
+              >
+                Clear Filters
+              </button>
+            </div>
+            <div class="search-box">
+              <input
+                type="text"
+                [(ngModel)]="savedAttendanceSearch"
+                placeholder="Search by student, trainer, topic, or ID..."
+              />
+            </div>
+          </div>
+
+          <!-- Saved Register Table -->
+          <div class="table-container">
+            <div *ngIf="loadingSavedAttendance" class="loading-state-inline">
+              <div class="spinner-sm"></div> Loading attendance records...
+            </div>
+            <table *ngIf="!loadingSavedAttendance" class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Student</th>
+                  <th>Course</th>
+                  <th>Trainer</th>
+                  <th>Status</th>
+                  <th>Topic Covered</th>
+                  <th>Remarks</th>
+                  <th>Verified By</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let record of filteredSavedAttendance">
+                  <td class="font-bold">{{ record.date }}</td>
+                  <td>
+                    <div class="user-cell clickable-user" (click)="viewStudentDetail(record.studentId)" title="Click to view student profile">
+                      <strong class="link-text">{{ record.studentName }} ↗</strong>
+                      <span class="code-cell font-small">{{ record.studentId }}</span>
+                    </div>
+                  </td>
+                  <td><span class="course-badge">{{ record.courseName }}</span></td>
+                  <td>{{ record.trainerName }}</td>
+                  <td>
+                    <span
+                      class="status-badge"
+                      [class.badge-green]="record.status === 'PRESENT'"
+                      [class.badge-yellow]="record.status === 'LATE'"
+                      [class.badge-red]="record.status === 'ABSENT'"
+                    >
+                      ● {{ record.status }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="topic-text" *ngIf="record.topicCovered">{{ record.topicCovered }}</span>
+                    <span class="muted-italic" *ngIf="!record.topicCovered">&mdash;</span>
+                  </td>
+                  <td>
+                    <span *ngIf="record.remarks">{{ record.remarks }}</span>
+                    <span class="muted-italic" *ngIf="!record.remarks">&mdash;</span>
+                  </td>
+                  <td><small class="muted">{{ record.markedBy || 'Trainer' }}</small></td>
+                </tr>
+                <tr *ngIf="!filteredSavedAttendance.length">
+                  <td colspan="8" class="empty-cell">No saved attendance records found matching your filters. Mark attendance above to record sessions.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SUB-VIEW 3: DATE-WISE SESSION ARCHIVE -->
+      <!-- ======================================================== -->
+      <div class="card-panel" *ngIf="attendanceSubView === 'DATE_ARCHIVE'">
+        <div class="panel-header">
+          <div>
+            <h3>Date-wise Attendance Archive</h3>
+            <p class="panel-sub">Select any past date to inspect curriculum topics taught, instructors on duty, and student presence logs.</p>
+          </div>
+          <div class="panel-actions">
+            <button
+              type="button"
+              class="btn-primary btn-sm"
+              (click)="jumpToDailyLoggerForDate(selectedArchiveDate)"
+              title="Open this date in the attendance logger to modify records"
+            >
+              ✏️ Edit / Record This Date
+            </button>
+            <button type="button" class="btn-outline btn-sm" (click)="loadDateArchive()" title="Refresh records for this date">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Date Picker Toolbar -->
+        <div class="toolbar-grid" style="margin-top: 1rem; margin-bottom: 1rem;">
+          <div class="filter-group">
+            <label class="inline-control">
+              <span class="control-lbl">Select Date:</span>
+              <input type="date" [(ngModel)]="selectedArchiveDate" (ngModelChange)="loadDateArchive()" class="input-date" />
+            </label>
+            <button
+              type="button"
+              class="btn-sm btn-outline"
+              (click)="selectedArchiveDate = attendanceDate; loadDateArchive()"
+            >
+              Today
+            </button>
+          </div>
+        </div>
+
+        <!-- Date Metrics Ribbon -->
+        <div class="mini-metrics-strip" *ngIf="dateArchiveSummary as dSum">
+          <div class="mini-metric">
+            <span class="mini-val">{{ dSum.total }}</span>
+            <span class="mini-lbl">Students Marked</span>
+          </div>
+          <div class="mini-metric text-success">
+            <span class="mini-val">{{ dSum.present }}</span>
+            <span class="mini-lbl">Present</span>
+          </div>
+          <div class="mini-metric text-warning">
+            <span class="mini-val">{{ dSum.late }}</span>
+            <span class="mini-lbl">Late</span>
+          </div>
+          <div class="mini-metric text-danger">
+            <span class="mini-val">{{ dSum.absent }}</span>
+            <span class="mini-lbl">Absent</span>
+          </div>
+          <div class="mini-metric">
+            <span class="mini-val font-bold" [class.text-success]="dSum.percent >= 80" [class.text-danger]="dSum.percent < 70">
+              {{ dSum.percent }}%
+            </span>
+            <span class="mini-lbl">Session Attendance</span>
+          </div>
+        </div>
+
+        <!-- Session Topic Chips -->
+        <div class="archive-topics-strip" *ngIf="dateArchiveSummary.topics.length">
+          <span class="control-lbl">Topics Covered on this Day:</span>
+          <span class="topic-chip" *ngFor="let topic of dateArchiveSummary.topics">📚 {{ topic }}</span>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loadingDateArchive" class="loading-state-inline">
+          <div class="spinner-sm"></div> Fetching records for {{ selectedArchiveDate }}...
+        </div>
+
+        <!-- Date Attendance Records Table -->
+        <div class="table-container" *ngIf="!loadingDateArchive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Candidate Name</th>
+                <th>Enrolled Course</th>
+                <th>Assigned Trainer</th>
+                <th>Attendance Status</th>
+                <th>Topic Covered</th>
+                <th>Remarks</th>
+                <th>Verified By</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rec of archiveRecords">
+                <td class="code-cell font-bold">{{ rec.studentId }}</td>
+                <td>
+                  <div class="user-cell clickable-user" (click)="viewStudentDetail(rec.studentId)">
+                    <strong class="link-text">{{ rec.studentName }} ↗</strong>
+                  </div>
+                </td>
+                <td><span class="course-badge">{{ rec.courseName }}</span></td>
+                <td>{{ rec.trainerName }}</td>
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.badge-green]="rec.status === 'PRESENT'"
+                    [class.badge-yellow]="rec.status === 'LATE'"
+                    [class.badge-red]="rec.status === 'ABSENT'"
+                  >
+                    ● {{ rec.status }}
+                  </span>
+                </td>
+                <td>{{ rec.topicCovered || '&mdash;' }}</td>
+                <td>{{ rec.remarks || '&mdash;' }}</td>
+                <td><small class="muted">{{ rec.markedBy || 'Trainer' }}</small></td>
+              </tr>
+              <tr *ngIf="!archiveRecords.length">
+                <td colspan="8" class="empty-cell">
+                  No attendance records found for {{ selectedArchiveDate }}. Click "✏️ Edit / Record This Date" to mark attendance.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUB-VIEW 4: TRAINER ALLOCATION ATTENDANCE REGISTER & MATRIX -->
+      <!-- ======================================================== -->
+      <div class="card-panel faculty-register-panel" *ngIf="attendanceSubView === 'FACULTY_REGISTER'" style="border-top: 4px solid #059669;">
+        <div class="panel-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+              <span style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">
+                👨‍🏫 Faculty Trainers Cohort &bull; Allocation Attendance
+              </span>
+            </div>
+            <h3 style="margin:0; font-size:1.25rem;">Trainer Allocation Attendance Register &amp; Matrix</h3>
+            <p class="panel-sub" style="margin:0.25rem 0 0 0;">
+              Audited faculty attendance tracking every allocated trainer's course track, active batch delivery, daily presence (P / L / A / H), and teaching hours.
+            </p>
+          </div>
+          <div class="panel-actions">
+            <!-- View Mode Switcher: Monthly Matrix vs Weekly Matrix vs Daily Log -->
+            <div class="display-mode-group">
+              <button
+                type="button"
+                class="btn-mode-toggle"
+                [class.active]="facultyRegisterDisplayMode === 'MONTHLY_MATRIX'"
+                (click)="setFacultyRegisterDisplayMode('MONTHLY_MATRIX')"
+                title="View month-wide attendance matrix (1 to 31)"
+              >
+                📅 Monthly Matrix
+              </button>
+              <button
+                type="button"
+                class="btn-mode-toggle"
+                [class.active]="facultyRegisterDisplayMode === 'WEEKLY_MATRIX'"
+                (click)="setFacultyRegisterDisplayMode('WEEKLY_MATRIX')"
+                title="View week-wide attendance matrix (Mon to Sun)"
+              >
+                📆 Weekly Matrix
+              </button>
+              <button
+                type="button"
+                class="btn-mode-toggle"
+                [class.active]="facultyRegisterDisplayMode === 'DAILY_LOG'"
+                (click)="setFacultyRegisterDisplayMode('DAILY_LOG')"
+                title="View detailed check-in timestamps and absence handover notes"
+              >
+                📋 Audit Log
+              </button>
+            </div>
+
+            <!-- Month Input if monthly -->
+            <div *ngIf="facultyHistoryRangeMode === 'monthly'" class="filter-group">
+              <label for="fac4-month-select" class="muted small-label">Month:</label>
+              <input
+                type="month"
+                id="fac4-month-select"
+                class="form-input form-input-sm"
+                [(ngModel)]="facultyHistoryMonth"
+                (change)="loadFacultyAttendanceHistory()"
+              />
+            </div>
+
+            <!-- Weekly Controls -->
+            <div *ngIf="facultyHistoryRangeMode === 'weekly'" class="week-selector-group">
+              <button type="button" class="btn-pager" (click)="shiftFacultyWeek(-1)" title="Previous Week">‹</button>
+              <span class="range-display">
+                {{ facultyHistoryWeekStart | date:'MMM d' }} – {{ facultyHistoryWeekEnd | date:'MMM d, y' }}
+              </span>
+              <button type="button" class="btn-pager" (click)="shiftFacultyWeek(1)" title="Next Week">›</button>
+              <button type="button" class="btn-outline btn-sm" (click)="initFacultyWeekRange(); loadFacultyAttendanceHistory()">Current Week</button>
+            </div>
+
+            <!-- Course Track Filter -->
+            <div class="filter-group">
+              <label for="fac4-track-filter" class="muted small-label">Track:</label>
+              <select
+                id="fac4-track-filter"
+                class="form-select form-select-sm"
+                [(ngModel)]="facultyRegisterCourseFilter"
+                (change)="filterFacultyAllocationMatrix()"
+              >
+                <option value="ALL">All Tracks</option>
+                <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <!-- Faculty Member Filter -->
+            <div class="filter-group">
+              <label for="fac4-trainer-filter" class="muted small-label">Faculty:</label>
+              <select
+                id="fac4-trainer-filter"
+                class="form-select form-select-sm"
+                [(ngModel)]="facultyHistoryTrainerFilter"
+                (change)="filterFacultyAllocationMatrix(); loadFacultyAttendanceHistory()"
+              >
+                <option value="ALL">All Faculty</option>
+                <option *ngFor="let t of trainers" [value]="t.id">{{ t.name }} ({{ t.id }})</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              class="btn-primary btn-sm"
+              (click)="exportFacultyHistoryCsv()"
+              [disabled]="exportingFacultyHistoryCsv || loadingFacultyHistory"
+              title="Download CSV report of faculty attendance"
+            >
+              <span *ngIf="!exportingFacultyHistoryCsv">📥 Export Trainer CSV</span>
+              <span *ngIf="exportingFacultyHistoryCsv">Generating...</span>
+            </button>
+            <button type="button" class="btn-outline btn-sm" (click)="loadFacultyAttendanceHistory()" title="Refresh records">
+              ↻
+            </button>
+          </div>
+        </div>
+
+        <!-- Faculty Attendance KPI Horizontal Strip (Small Boxes) -->
+        <div class="faculty-kpi-horizontal-strip" *ngIf="facultyHistoryStats as fStats">
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#ecfdf5;color:#059669;">👨‍🏫</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val text-green">{{ filteredFacultyAllocationMatrixRows.length }} Trainers</span>
+              <span class="faculty-kpi-lbl">Allocated Faculty</span>
+            </div>
+          </div>
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#eff6ff;color:#2563eb;">📋</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val">{{ fStats.totalDays }} Days</span>
+              <span class="faculty-kpi-lbl">Days Logged</span>
+            </div>
+          </div>
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#f0fdf4;color:#16a34a;">✔️</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val text-green">{{ fStats.presentDays }} Days</span>
+              <span class="faculty-kpi-lbl">Present (Checked In)</span>
+            </div>
+          </div>
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#fffbeb;color:#d97706;">🏖️</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val text-amber">{{ fStats.leaveDays }} Days</span>
+              <span class="faculty-kpi-lbl">Leaves Approved</span>
+            </div>
+          </div>
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#fef2f2;color:#dc2626;">⚠️</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val text-red">{{ fStats.absentDays }} Days</span>
+              <span class="faculty-kpi-lbl">Uninformed Absences</span>
+            </div>
+          </div>
+          <div class="faculty-kpi-box">
+            <div class="faculty-kpi-icon" style="background:#f3e8ff;color:#9333ea;">📈</div>
+            <div class="faculty-kpi-info">
+              <span class="faculty-kpi-val" [class.text-green]="fStats.attendancePercentage >= 80" [class.text-amber]="fStats.attendancePercentage >= 60 && fStats.attendancePercentage < 80" [class.text-red]="fStats.attendancePercentage < 60">
+                {{ fStats.attendancePercentage }}%
+              </span>
+              <span class="faculty-kpi-lbl">Attendance Rate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div *ngIf="loadingFacultyHistory" class="loading-state">
+          <div class="spinner"></div>
+          <p>Compiling faculty trainer allocation attendance...</p>
+        </div>
+
+        <!-- MATRIX VIEW (MONTHLY OR WEEKLY) -->
+        <div class="table-container matrix-scroll-container" *ngIf="!loadingFacultyHistory && facultyRegisterDisplayMode !== 'DAILY_LOG'">
+          <table class="data-table matrix-table faculty-table">
+            <thead>
+              <tr style="background:#065f46; color:#ffffff;">
+                <th class="sticky-col col-name" style="background:#065f46; color:#ffffff;">Faculty Trainer</th>
+                <th class="sticky-col col-course" style="background:#065f46; color:#ffffff;">Allocated Course Track</th>
+                <th class="sticky-col col-trainer" style="background:#065f46; color:#ffffff;">Allocated Batches &amp; Candidates</th>
+
+                <!-- Monthly 1..31 Columns -->
+                <ng-container *ngIf="facultyRegisterDisplayMode === 'MONTHLY_MATRIX'">
+                  <th *ngFor="let day of daysInSelectedMonth" class="day-col-header" style="background:#065f46; color:#ffffff;">
+                    {{ day }}
+                  </th>
+                </ng-container>
+
+                <!-- Weekly Mon..Sun Columns -->
+                <ng-container *ngIf="facultyRegisterDisplayMode === 'WEEKLY_MATRIX'">
+                  <th *ngFor="let wd of facultyWeekDays" class="day-col-header" style="background:#065f46; color:#ffffff; min-width: 55px;">
+                    <div>{{ wd.dayName }}</div>
+                    <div style="font-size: 0.72rem; opacity: 0.85;">{{ wd.dayNum }}</div>
+                  </th>
+                </ng-container>
+
+                <th class="summary-col" style="background:#047857; color:#ffffff;">Held</th>
+                <th class="summary-col" style="background:#047857; color:#ffffff;">P</th>
+                <th class="summary-col" style="background:#047857; color:#ffffff;">L</th>
+                <th class="summary-col" style="background:#047857; color:#ffffff;">A</th>
+                <th class="summary-col" style="background:#047857; color:#ffffff;">Attendance %</th>
+                <th class="summary-col" style="background:#047857; color:#ffffff;">Today's Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of filteredFacultyAllocationMatrixRows">
+                <!-- Faculty Trainer Name -->
+                <td class="sticky-col col-name">
+                  <strong class="link-text" (click)="viewTrainerDetail(row.trainerId)" title="View Trainer Profile">
+                    {{ row.trainerName }} ↗
+                  </strong>
+                  <div class="code-cell font-small font-mono">{{ row.trainerId }}</div>
+                </td>
+
+                <!-- Allocated Course Track -->
+                <td class="sticky-col col-course font-bold" style="color: #065f46;">
+                  {{ row.courseTrackDisplay }}
+                </td>
+
+                <!-- Allocated Batches & Candidates -->
+                <td class="sticky-col col-trainer font-small">
+                  <div style="font-weight: 600;">{{ row.batchDisplay }}</div>
+                  <span class="badge-role" style="font-size: 0.72rem; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; margin-top: 2px;">
+                    👥 {{ row.studentCount }} Candidates Assigned
+                  </span>
+                </td>
+
+                <!-- Monthly Day Cells -->
+                <ng-container *ngIf="facultyRegisterDisplayMode === 'MONTHLY_MATRIX'">
+                  <td *ngFor="let day of daysInSelectedMonth" class="day-cell">
+                    <span
+                      *ngIf="row.dayStatuses[day] as dStat"
+                      class="day-pill"
+                      [class.pill-p]="dStat.status === 'PRESENT'"
+                      [class.pill-l]="dStat.status === 'ON_LEAVE'"
+                      [class.pill-a]="dStat.status === 'ABSENT'"
+                      [class.pill-holiday]="dStat.status === 'HOLIDAY'"
+                      [class.pill-pending]="dStat.status === 'PENDING'"
+                      [title]="dStat.date + ' | ' + dStat.status + (dStat.checkInTime ? ' | Checked in: ' + dStat.checkInTime : '') + (dStat.topic ? ' | ' + dStat.topic : '') + (dStat.remarks ? ' | ' + dStat.remarks : '')"
+                    >
+                      {{ dStat.status === 'PRESENT' ? 'P' : (dStat.status === 'ON_LEAVE' ? 'L' : (dStat.status === 'HOLIDAY' ? 'H' : (dStat.status === 'ABSENT' ? 'A' : '⏱'))) }}
+                    </span>
+                    <span *ngIf="!row.dayStatuses[day]" class="day-empty">&mdash;</span>
+                  </td>
+                </ng-container>
+
+                <!-- Weekly Day Cells -->
+                <ng-container *ngIf="facultyRegisterDisplayMode === 'WEEKLY_MATRIX'">
+                  <td *ngFor="let wd of facultyWeekDays" class="day-cell">
+                    <span
+                      *ngIf="row.dateStatuses && row.dateStatuses[wd.date] as wStat"
+                      class="day-pill"
+                      [class.pill-p]="wStat.status === 'PRESENT'"
+                      [class.pill-l]="wStat.status === 'ON_LEAVE'"
+                      [class.pill-a]="wStat.status === 'ABSENT'"
+                      [class.pill-holiday]="wStat.status === 'HOLIDAY'"
+                      [class.pill-pending]="wStat.status === 'PENDING'"
+                      [title]="wStat.date + ' | ' + wStat.status + (wStat.checkInTime ? ' | Checked in: ' + wStat.checkInTime : '') + (wStat.topic ? ' | ' + wStat.topic : '') + (wStat.remarks ? ' | ' + wStat.remarks : '')"
+                    >
+                      {{ wStat.status === 'PRESENT' ? 'P' : (wStat.status === 'ON_LEAVE' ? 'L' : (wStat.status === 'HOLIDAY' ? 'H' : (wStat.status === 'ABSENT' ? 'A' : '⏱'))) }}
+                    </span>
+                    <span *ngIf="!row.dateStatuses || !row.dateStatuses[wd.date]" class="day-empty">&mdash;</span>
+                  </td>
+                </ng-container>
+
+                <!-- Summary Cells -->
+                <td class="summary-col font-bold">{{ row.totalHeld }}</td>
+                <td class="summary-col text-success font-bold">{{ row.presentCount }}</td>
+                <td class="summary-col text-warning font-bold">
+                  {{ row.leaveCount }}
+                  <small *ngIf="(row.convertedLeaveDays ?? 0) > 0" style="display:block; font-size:0.7rem; color:#b45309;" title="Includes leave converted from 3 missed logins">
+                    (+{{ row.convertedLeaveDays }}d LOP)
+                  </small>
+                </td>
+                <td class="summary-col text-danger font-bold">
+                  {{ row.absentCount }}
+                  <small *ngIf="(row.convertedLeaveDays ?? 0) > 0" style="display:block; font-size:0.7rem; color:#b45309;" title="3 missed logins = 1 Day Leave deduction">
+                    ({{ row.convertedLeaveDays }}d leave)
+                  </small>
+                  <small *ngIf="!(row.convertedLeaveDays ?? 0) && (row.activeStrikes ?? 0) > 0" style="display:block; font-size:0.7rem; color:#92400e;" title="Strikes towards 1-day leave deduction">
+                    ({{ row.activeStrikes }}/3)
+                  </small>
+                </td>
+                <td class="summary-col col-pct">
+                  <span
+                    class="percent-badge"
+                    [class.badge-green]="row.attendancePercent >= 80"
+                    [class.badge-yellow]="row.attendancePercent >= 60 && row.attendancePercent < 80"
+                    [class.badge-red]="row.attendancePercent < 60"
+                  >
+                    {{ row.attendancePercent }}%
+                  </span>
+                </td>
+                <!-- Today Action -->
+                <td class="summary-col">
+                  <div style="display:flex; flex-direction:column; gap:0.25rem; align-items:center;">
+                    <span
+                      class="status-badge"
+                      style="font-size:0.72rem; padding: 2px 6px;"
+                      [ngClass]="{
+                        'status-active': row.todayStatus === 'PRESENT',
+                        'status-warning': row.todayStatus === 'ON_LEAVE',
+                        'status-danger': row.todayStatus === 'ABSENT' || row.todayStatus === 'PENDING'
+                      }"
+                    >
+                      ● {{ row.todayStatus }}
+                    </span>
+                    <button
+                      *ngIf="row.todayStatus !== 'PRESENT'"
+                      type="button"
+                      class="btn-xs btn-primary"
+                      style="font-size:0.72rem; background:#059669; border-color:#059669; padding: 2px 6px;"
+                      [disabled]="checkingInFacultyId === row.trainerId"
+                      (click)="quickCheckInTrainer(row.trainerId)"
+                      title="Quick check in trainer for today"
+                    >
+                      {{ checkingInFacultyId === row.trainerId ? '...' : '✓ Check In' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="!filteredFacultyAllocationMatrixRows.length">
+                <td [attr.colspan]="(facultyRegisterDisplayMode === 'MONTHLY_MATRIX' ? daysInSelectedMonth.length : facultyWeekDays.length) + 9" class="empty-cell">
+                  No allocated faculty trainers found matching the selected track or trainer filter.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- DETAILED DAILY CHECK-IN AUDIT LOG -->
+        <div class="table-container" *ngIf="!loadingFacultyHistory && facultyRegisterDisplayMode === 'DAILY_LOG'">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="background:#ecfdf5; color:#065f46;">Date</th>
+                <th style="background:#ecfdf5; color:#065f46;">Faculty ID</th>
+                <th style="background:#ecfdf5; color:#065f46;">Faculty Name</th>
+                <th style="background:#ecfdf5; color:#065f46;">Allocated Course Track</th>
+                <th style="background:#ecfdf5; color:#065f46;">Faculty Status</th>
+                <th style="background:#ecfdf5; color:#065f46;">Check-In Time</th>
+                <th style="background:#ecfdf5; color:#065f46;">Leave / Absence Details</th>
+                <th style="background:#ecfdf5; color:#065f46;">Handover Notes</th>
+                <th style="background:#ecfdf5; color:#065f46;">Manager Action / Backup</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rec of facultyHistoryRecords">
+                <td class="font-bold">{{ rec.date }}</td>
+                <td class="code-cell font-mono">{{ rec.trainerId }}</td>
+                <td>
+                  <strong>{{ rec.trainerName }}</strong>
+                </td>
+                <td class="font-small font-bold" style="color: #065f46;">
+                  {{ rec.assignedCourses?.join(', ') || 'General Track' }}
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="{
+                    'status-active': rec.status === 'PRESENT',
+                    'status-warning': rec.status === 'ON_LEAVE',
+                    'status-danger': rec.status === 'ABSENT'
+                  }">
+                    ● {{ rec.status === 'PRESENT' ? 'PRESENT' : (rec.status === 'ON_LEAVE' ? 'ON LEAVE' : 'ABSENT') }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="rec.checkInTime">{{ rec.checkInTime | date:'shortTime' }}</span>
+                  <span *ngIf="!rec.checkInTime" class="muted">&mdash;</span>
+                </td>
+                <td>
+                  <div *ngIf="rec.status === 'ON_LEAVE' || rec.status === 'ABSENT'">
+                    <span class="reason-tag">{{ rec.leaveType || 'ABSENCE' }}</span>
+                    <span class="text-sm muted" *ngIf="rec.leaveReason">{{ rec.leaveReason }}</span>
+                    <div *ngIf="rec.expectedReturnDate" class="text-xs muted">
+                      Expected return: {{ rec.expectedReturnDate | date:'mediumDate' }}
+                    </div>
+                  </div>
+                  <span *ngIf="rec.status === 'PRESENT'" class="muted">&mdash;</span>
+                </td>
+                <td>
+                  <span *ngIf="rec.handoverNotes" class="text-sm">{{ rec.handoverNotes }}</span>
+                  <span *ngIf="!rec.handoverNotes" class="muted">&mdash;</span>
+                </td>
+                <td>
+                  <div class="action-cell-flex">
+                    <span class="status-pill status-leave" *ngIf="rec.managerAcknowledged" title="Manager acknowledged">
+                      ✓ Acknowledged
+                    </span>
+                    <span *ngIf="rec.backupTrainerName" class="badge-backup">
+                      Backup: {{ rec.backupTrainerName }}
+                    </span>
+                    <span *ngIf="!rec.managerAcknowledged && !rec.backupTrainerName" class="muted">&mdash;</span>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="!facultyHistoryRecords.length">
+                <td colspan="9" class="empty-cell">
+                  No faculty attendance logs found for the selected range and faculty filter.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 6: ALLOCATION HISTORY -->
+  <section *ngIf="!loading && selectedTab === 'history'" class="tab-content">
+    <div class="card-panel">
+      <!-- Toolbar -->
+      <div class="toolbar-grid">
+        <div class="search-box">
+          <input
+            type="text"
+            [(ngModel)]="historySearch"
+            (ngModelChange)="loadHistory()"
+            placeholder="Search by student name or Student ID..."
+          />
+        </div>
+        <div class="filter-group">
+          <select [(ngModel)]="historyCourseFilter" (ngModelChange)="loadHistory()">
+            <option value="ALL">All Courses</option>
+            <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+          </select>
+          <select [(ngModel)]="historyActionFilter" (ngModelChange)="loadHistory()">
+            <option value="ALL">All Actions</option>
+            <option value="INITIAL_ALLOCATION">Initial Allocation</option>
+            <option value="REASSIGNMENT">Reassignment</option>
+            <option value="ABSENCE_REASSIGNMENT">Absence Reassignment</option>
+            <option value="AUTO_ALLOCATION">Auto Allocation</option>
+          </select>
+          <button type="button" class="btn-sm btn-outline" (click)="loadHistory()">↻ Refresh</button>
+          <button type="button" class="btn-sm btn-outline" (click)="exportHistory()" title="Export Allocation History to CSV">
+            📥 Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Student Details</th>
+              <th>Enrolled Course</th>
+              <th>Previous Trainer</th>
+              <th>New Trainer</th>
+              <th>Reason / Remark</th>
+              <th>Updated By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of historyRecords">
+              <td class="timestamp-cell">{{ h.allocatedAt | date:'medium' }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getActionBadgeClass(h.action)">
+                  {{ formatAction(h.action) }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ h.studentName }}</strong>
+                <span class="code-cell font-small">{{ h.studentId }}</span>
+              </td>
+              <td><span class="course-badge">{{ h.courseName }}</span></td>
+              <td>
+                <span *ngIf="h.previousTrainerName">{{ h.previousTrainerName }}</span>
+                <span *ngIf="!h.previousTrainerName" class="muted">&mdash;</span>
+              </td>
+              <td>
+                <strong class="text-primary">{{ h.newTrainerName }}</strong>
+              </td>
+              <td>
+                <span class="reason-cell" [title]="h.reason || ''">{{ h.reason || 'None specified' }}</span>
+              </td>
+              <td>{{ h.updatedBy }}</td>
+            </tr>
+            <tr *ngIf="!historyRecords.length">
+              <td colspan="8" class="empty-cell">No allocation history records found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 1: ADD / EDIT TRAINER -->
+  <!-- ======================================================== -->
+  <div *ngIf="showTrainerModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <h3>{{ isEditingTrainer ? 'Edit Trainer Details' : 'Register New Trainer' }}</h3>
+        <button type="button" class="modal-close-btn" (click)="closeTrainerModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <form (ngSubmit)="saveTrainer()" class="modal-body form-grid">
+        <div *ngIf="trainerFormError" class="alert-box error">{{ trainerFormError }}</div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="tr-name">Trainer Full Name *</label>
+            <input id="tr-name" type="text" [(ngModel)]="trainerForm.name" name="name" required placeholder="e.g. Suresh Kumar" />
+          </div>
+          <div class="form-group">
+            <label for="tr-email">Email Address *</label>
+            <input id="tr-email" type="email" [(ngModel)]="trainerForm.email" name="email" required placeholder="suresh@tvk.com" />
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="tr-phone">Phone Number</label>
+            <input id="tr-phone" type="tel" [(ngModel)]="trainerForm.phone" name="phone" placeholder="+91 98765 43210" />
+          </div>
+          <div class="form-group">
+            <label for="tr-qualification">Highest Qualification</label>
+            <input id="tr-qualification" type="text" [(ngModel)]="trainerForm.qualification" name="qualification" placeholder="e.g. M.Tech CSE, MCA, B.E" />
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="tr-specialization">Specialization / Domain</label>
+            <input id="tr-specialization" type="text" [(ngModel)]="trainerForm.specialization" name="specialization" placeholder="e.g. Full Stack Java, Cloud & DevOps" />
+          </div>
+          <div class="form-group">
+            <label for="tr-skills">Technical Skills (comma-separated)</label>
+            <input id="tr-skills" type="text" [(ngModel)]="trainerForm.skillsString" name="skills" placeholder="Java, Spring Boot, Angular, Docker" />
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="tr-emp-type">Employment Type</label>
+            <select id="tr-emp-type" [(ngModel)]="trainerForm.employmentType" name="employmentType">
+              <option value="FULL_TIME">Full Time</option>
+              <option value="PART_TIME">Part Time</option>
+              <option value="CONTRACT">Contract</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tr-capacity">Maximum Student Capacity</label>
+            <input id="tr-capacity" type="number" [(ngModel)]="trainerForm.maxCapacity" name="maxCapacity" min="1" max="100" />
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="tr-avail">Initial Availability</label>
+            <select id="tr-avail" [(ngModel)]="trainerForm.availability" name="availability">
+              <option value="AVAILABLE">Available</option>
+              <option value="ABSENT">Absent</option>
+              <option value="ON_LEAVE">On Leave</option>
+              <option value="UNAVAILABLE">Unavailable</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tr-status">Status</label>
+            <select id="tr-status" [(ngModel)]="trainerForm.status" name="status">
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Qualified Courses (Select all that apply)</label>
+          <div class="checkbox-chips-grid">
+            <label
+              *ngFor="let course of activeCourses"
+              class="chip-checkbox"
+              [class.checked]="trainerForm.qualifiedCourses.includes(course.name)"
+            >
+              <input
+                type="checkbox"
+                [checked]="trainerForm.qualifiedCourses.includes(course.name)"
+                (change)="toggleQualifiedCourse(course.name)"
+              />
+              <span>{{ course.name }}</span>
+            </label>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button type="button" class="btn-outline" (click)="closeTrainerModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="trainerFormSaving">
+            {{ trainerFormSaving ? 'Saving...' : (isEditingTrainer ? 'Update Trainer' : 'Register Trainer') }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: VIEW TRAINER PROFILE -->
+  <!-- ======================================================== -->
+  <div *ngIf="showProfileModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card wide">
+      <header class="modal-header">
+        <div class="profile-header-info">
+          <h3>{{ selectedTrainerProfile?.name }}</h3>
+          <span class="code-cell">{{ selectedTrainerProfile?.id }}</span>
+          <span class="status-badge" [ngClass]="getAvailabilityBadgeClass(selectedTrainerProfile?.availability || '')">
+            ● {{ selectedTrainerProfile?.availability?.replace('_', ' ') }}
+          </span>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeProfileModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <div *ngIf="loadingProfile" class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading profile details...</p>
+        </div>
+
+        <div *ngIf="!loadingProfile && selectedTrainerProfile as p" class="profile-grid">
+          <div class="profile-meta-pane">
+            <div class="meta-field">
+              <span class="meta-label">Email</span>
+              <span class="meta-value">{{ p.email }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Phone</span>
+              <span class="meta-value">{{ p.phone || 'None' }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Qualification</span>
+              <span class="meta-value">{{ p.qualification || 'Not specified' }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Specialization</span>
+              <span class="meta-value">{{ p.specialization || 'General' }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Employment Type</span>
+              <span class="meta-value">{{ p.employmentType.replace('_', ' ') }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Student Capacity</span>
+              <span class="meta-value"><strong>{{ p.currentStudentCount }}</strong> / {{ p.maxCapacity }}</span>
+            </div>
+            <div class="meta-field">
+              <span class="meta-label">Technical Skills</span>
+              <div class="tags-row">
+                <span class="tag-pill" *ngFor="let s of p.skills">{{ s }}</span>
+              </div>
+            </div>
+
+            <!-- Portal Login Credentials -->
+            <div class="credentials-card-sm" style="margin-top: 1.25rem; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.85rem; border-radius: 8px;">
+              <div style="font-weight: 700; color: #166534; font-size: 0.82rem; margin-bottom: 0.35rem;">
+                🔑 Trainer Portal Credentials
+              </div>
+              <div style="font-size: 0.78rem; color: #334155; display: flex; flex-direction: column; gap: 0.25rem;">
+                <div>Login ID: <strong>{{ p.id }}</strong></div>
+                <div>Default Pass: <code>{{ p.accountPassword || 'TVK@Trainer2026' }}</code></div>
+                <div *ngIf="p.lastLoginAt" class="muted">Last Login: {{ p.lastLoginAt | date:'medium' }}</div>
+              </div>
+              <button
+                type="button"
+                class="btn-xs btn-outline"
+                style="margin-top: 0.6rem; width: 100%;"
+                (click)="resetPasswordForTrainer(p)"
+                title="Reset trainer password to a new temporary pass"
+              >
+                🔄 Reset Password
+              </button>
+            </div>
+          </div>
+
+          <div class="profile-students-pane">
+            <h4>Assigned Students ({{ profileAssignedStudents.length }})</h4>
+            <div class="table-container small">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let s of profileAssignedStudents">
+                    <td class="code-cell">{{ s.id || s._id }}</td>
+                    <td><strong>{{ s.name }}</strong></td>
+                    <td><span class="course-badge">{{ s.courseName }}</span></td>
+                    <td class="muted">{{ s.email }}</td>
+                  </tr>
+                  <tr *ngIf="!profileAssignedStudents.length">
+                    <td colspan="4" class="empty-cell">No active students currently assigned.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-outline" (click)="closeProfileModal()">Close</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 3: COURSE ALLOCATION (PRIMARY & BACKUP TRAINERS) -->
+  <!-- ======================================================== -->
+  <div *ngIf="showCourseAllocationModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Allocate Trainers for Course</h3>
+          <p class="panel-sub" *ngIf="selectedCourseForAllocation">
+            {{ selectedCourseForAllocation.courseName }} ({{ selectedCourseForAllocation.category }})
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeCourseAllocationModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <form (ngSubmit)="saveCourseAllocation()" class="modal-body form-grid">
+        <div *ngIf="courseAllocationError" class="alert-box error">{{ courseAllocationError }}</div>
+
+        <div class="form-group">
+          <label for="primary-tr">Primary Trainer *</label>
+          <select
+            id="primary-tr"
+            [(ngModel)]="courseAllocationForm.primaryTrainerId"
+            name="primaryTrainer"
+            required
+          >
+            <option value="">-- Select Primary Trainer --</option>
+            <option
+              *ngFor="let t of trainers"
+              [value]="t.id"
+              [disabled]="t.status !== 'ACTIVE'"
+            >
+              {{ t.name }} - {{ t.specialization || 'Trainer' }} (Students: {{ t.currentStudentCount }}/{{ t.maxCapacity }})
+              {{ t.status === 'INACTIVE' ? '(Inactive)' : '' }}
+            </option>
+          </select>
+          <small class="muted">Primary trainer is the main instructor assigned to incoming students for this course track.</small>
+        </div>
+
+        <div class="form-group">
+          <label>Backup Trainer(s) (Optional)</label>
+          <div class="checkbox-chips-grid">
+            <ng-container *ngFor="let t of trainers">
+              <label
+                *ngIf="t.id !== courseAllocationForm.primaryTrainerId"
+                class="chip-checkbox"
+                [class.checked]="courseAllocationForm.backupTrainerIds.includes(t.id)"
+              >
+                <input
+                  type="checkbox"
+                  [checked]="courseAllocationForm.backupTrainerIds.includes(t.id)"
+                  (change)="toggleBackupTrainer(t.id)"
+                />
+                <span>{{ t.name }} ({{ t.specialization }})</span>
+              </label>
+            </ng-container>
+          </div>
+          <small class="muted">Backup trainers will automatically be suggested as replacements during primary trainer absence.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="ca-notes">Remarks / Batch Notes</label>
+          <textarea
+            id="ca-notes"
+            [(ngModel)]="courseAllocationForm.notes"
+            name="notes"
+            rows="2"
+            placeholder="Schedule arrangements, specialized batch info..."
+          ></textarea>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn-outline" (click)="closeCourseAllocationModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="courseAllocationSaving">
+            {{ courseAllocationSaving ? 'Saving...' : 'Save Allocation' }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 4: SINGLE STUDENT ALLOCATE / REASSIGN -->
+  <!-- ======================================================== -->
+  <div *ngIf="showSingleAllocateModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>{{ targetStudentForAllocation?.trainerId ? 'Reassign Student Trainer' : 'Allocate Trainer to Student' }}</h3>
+          <p class="panel-sub" *ngIf="targetStudentForAllocation">
+            Student: <strong>{{ targetStudentForAllocation.name }}</strong> ({{ targetStudentForAllocation.id }})
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeSingleAllocateModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <form (ngSubmit)="saveSingleStudentAllocation()" class="modal-body form-grid">
+        <div *ngIf="singleAllocateError" class="alert-box error">{{ singleAllocateError }}</div>
+
+        <div class="info-card-box" *ngIf="targetStudentForAllocation">
+          <div class="info-row">
+            <span class="info-lbl">Enrolled Course:</span>
+            <span class="info-val"><strong>{{ targetStudentForAllocation.enrolledCourse }}</strong></span>
+          </div>
+          <div class="info-row" *ngIf="targetStudentForAllocation.trainerName">
+            <span class="info-lbl">Current Trainer:</span>
+            <span class="info-val text-warning">{{ targetStudentForAllocation.trainerName }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="single-tr">Select Qualified Target Trainer *</label>
+          <select
+            id="single-tr"
+            [(ngModel)]="singleAllocateTargetTrainerId"
+            name="targetTrainer"
+            required
+          >
+            <option value="">-- Select Active Trainer --</option>
+            <option
+              *ngFor="let t of getQualifiedTrainersForStudent(targetStudentForAllocation)"
+              [value]="t.id"
+              [disabled]="t.currentStudentCount >= t.maxCapacity"
+            >
+              {{ t.name }} - {{ t.specialization }} (Load: {{ t.currentStudentCount }}/{{ t.maxCapacity }} - {{ t.maxCapacity - t.currentStudentCount }} remaining)
+              {{ t.currentStudentCount >= t.maxCapacity ? '[FULL]' : '' }}
+            </option>
+          </select>
+          <small class="muted">Only shows active, available trainers qualified for this course.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="single-reason">Reason for {{ targetStudentForAllocation?.trainerId ? 'Reassignment' : 'Allocation' }}</label>
+          <input
+            id="single-reason"
+            type="text"
+            [(ngModel)]="singleAllocateReason"
+            name="reason"
+            placeholder="e.g. Batch start date alignment, trainer specialization..."
+          />
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn-outline" (click)="closeSingleAllocateModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="singleAllocateSaving">
+            {{ singleAllocateSaving ? 'Allocating...' : 'Confirm Allocation' }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 5: BULK ALLOCATE STUDENTS -->
+  <!-- ======================================================== -->
+  <div *ngIf="showBulkAllocateModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <h3>Bulk Student Allocation</h3>
+          <p class="panel-sub">Allocate {{ selectedStudentIds.size }} selected student(s) to a single instructor.</p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeBulkAllocateModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <form (ngSubmit)="saveBulkAllocation()" class="modal-body form-grid">
+        <div *ngIf="bulkAllocateError" class="alert-box error">{{ bulkAllocateError }}</div>
+
+        <div class="selected-summary-box">
+          <strong>Selected Students ({{ selectedStudentsList.length }}):</strong>
+          <div class="student-pill-list">
+            <span class="student-chip" *ngFor="let s of selectedStudentsList.slice(0, 8)">
+              {{ s.name }} ({{ s.enrolledCourse }})
+            </span>
+            <span class="student-chip more" *ngIf="selectedStudentsList.length > 8">
+              +{{ selectedStudentsList.length - 8 }} more
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="bulk-tr">Target Trainer *</label>
+          <select
+            id="bulk-tr"
+            [(ngModel)]="bulkAllocateTargetTrainerId"
+            name="targetTrainer"
+            required
+          >
+            <option value="">-- Select Trainer --</option>
+            <option
+              *ngFor="let t of trainers"
+              [value]="t.id"
+              [disabled]="t.status !== 'ACTIVE' || t.availability !== 'AVAILABLE'"
+            >
+              {{ t.name }} - {{ t.specialization }} (Current: {{ t.currentStudentCount }}/{{ t.maxCapacity }}, Remaining: {{ t.maxCapacity - t.currentStudentCount }})
+              {{ t.status !== 'ACTIVE' ? '(Inactive)' : (t.availability !== 'AVAILABLE' ? '(' + t.availability + ')' : '') }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="bulk-reason">Allocation Remark / Reason</label>
+          <input
+            id="bulk-reason"
+            type="text"
+            [(ngModel)]="bulkAllocateReason"
+            name="reason"
+            placeholder="e.g. New cohort batch kickoff"
+          />
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn-outline" (click)="closeBulkAllocateModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="bulkAllocateSaving">
+            {{ bulkAllocateSaving ? 'Allocating...' : 'Confirm Bulk Allocation' }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 6: AUTO ALLOCATION PREVIEW & EXECUTION -->
+  <!-- ======================================================== -->
+  <div *ngIf="showAutoAllocateModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card wide">
+      <header class="modal-header">
+        <div>
+          <h3>⚡ Automatic Workload Distribution</h3>
+          <p class="panel-sub">
+            The system analyzes unassigned students, groups by course track, checks eligible trainer availability &amp; capacity, and generates an optimized distribution.
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeAutoAllocateModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <div *ngIf="loadingAutoAllocate" class="loading-state">
+          <div class="spinner"></div>
+          <p>Calculating balanced distribution plan across active trainers...</p>
+        </div>
+
+        <div *ngIf="autoAllocateError" class="alert-box error">{{ autoAllocateError }}</div>
+
+        <div *ngIf="!loadingAutoAllocate && autoAllocationPreview as p">
+          <!-- Warnings -->
+          <div *ngFor="let w of p.warnings" class="alert-box warning">
+            ⚠️ {{ w }}
+          </div>
+
+          <!-- Summary Strip -->
+          <div class="auto-summary-strip">
+            <div class="summary-stat">
+              <span class="stat-lbl">Unassigned Students</span>
+              <span class="stat-num">{{ p.totalUnassigned }}</span>
+            </div>
+            <div class="summary-stat text-success">
+              <span class="stat-lbl">Allocatable Now</span>
+              <span class="stat-num">{{ p.allocatableCount }}</span>
+            </div>
+            <div class="summary-stat text-warning" *ngIf="p.unallocatableCount > 0">
+              <span class="stat-lbl">Remaining Unassigned</span>
+              <span class="stat-num">{{ p.unallocatableCount }}</span>
+            </div>
+          </div>
+
+          <!-- Course Breakdown Table -->
+          <h4>Course Breakdown</h4>
+          <div class="table-container small">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Course Track</th>
+                  <th>Unassigned Students</th>
+                  <th>Eligible Available Trainers</th>
+                  <th>Allocatable in this Plan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cb of p.courseBreakdowns">
+                  <td><strong>{{ cb.courseName }}</strong></td>
+                  <td>{{ cb.unassignedCount }}</td>
+                  <td>{{ cb.availableTrainersCount }}</td>
+                  <td>
+                    <span class="badge-student-count" [class.badge-green]="cb.allocatableCount === cb.unassignedCount">
+                      {{ cb.allocatableCount }} / {{ cb.unassignedCount }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Proposed Distributions Table -->
+          <h4 class="mt-1">Proposed Allocations Preview ({{ p.proposedAllocations.length }})</h4>
+          <div class="table-container small scrollable-preview">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th>Course</th>
+                  <th>Proposed Instructor</th>
+                  <th>Trainer Capacity After Plan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let alloc of p.proposedAllocations">
+                  <td><strong>{{ alloc.studentName }}</strong></td>
+                  <td><span class="course-badge">{{ alloc.courseName }}</span></td>
+                  <td><strong class="text-primary">👨‍🏫 {{ alloc.proposedTrainerName }}</strong></td>
+                  <td>{{ alloc.trainerRemainingCapacity }} remaining</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-outline" (click)="closeAutoAllocateModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="applyingAutoAllocate || !autoAllocationPreview?.proposedAllocations?.length"
+          (click)="applyAutoAllocation()"
+        >
+          {{ applyingAutoAllocate ? 'Applying...' : 'Confirm & Apply Allocation (' + (autoAllocationPreview?.proposedAllocations?.length || 0) + ' Students)' }}
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 9: CREATE / EDIT TRAINING BATCH -->
+  <!-- ======================================================== -->
+  <div *ngIf="showBatchModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <header class="modal-header">
+        <h3>{{ isEditingBatch ? 'Edit Training Batch' : 'Create Training Batch' }}</h3>
+        <button type="button" class="modal-close-btn" (click)="closeBatchModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <form (ngSubmit)="saveBatch()" class="modal-body form-grid">
+        <div *ngIf="batchFormError" class="alert-box error">{{ batchFormError }}</div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="batch-name">Batch Name / Code *</label>
+            <input id="batch-name" type="text" [(ngModel)]="batchForm.batchName" name="batchName" required placeholder="e.g. FS-JAVA-2026-B1" />
+          </div>
+          <div class="form-group">
+            <label for="batch-course">Course Track *</label>
+            <select *ngIf="activeCourses.length" id="batch-course" [(ngModel)]="batchForm.courseName" name="courseName" required>
+              <option value="">-- Select Course --</option>
+              <option *ngFor="let c of activeCourses" [value]="c.name">{{ c.name }}</option>
+            </select>
+            <input
+              *ngIf="!activeCourses.length"
+              id="batch-course"
+              type="text"
+              [(ngModel)]="batchForm.courseName"
+              name="courseName"
+              required
+              placeholder="e.g. Java Full Stack"
+            />
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="batch-trainer">Assigned Trainer *</label>
+            <select id="batch-trainer" [(ngModel)]="batchForm.trainerId" name="trainerId" required>
+              <option value="">-- Select Trainer --</option>
+              <option *ngFor="let t of trainers" [value]="t.id">
+                {{ t.name }} ({{ t.id }}) - {{ t.specialization || 'Trainer' }}
+              </option>
+            </select>
+            <small *ngIf="!trainers.length" class="text-danger" style="display:block; margin-top:4px;">
+              ⚠️ No trainers registered yet. Please add a trainer in Trainer Directory first.
+            </small>
+          </div>
+          <div class="form-group">
+            <label for="batch-slot">Time Slot</label>
+            <input id="batch-slot" type="text" [(ngModel)]="batchForm.timeSlot" name="timeSlot" placeholder="e.g. 10:00 AM - 12:00 PM" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Class Days</label>
+          <div class="checkbox-chips-grid">
+            <label *ngFor="let day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" class="chip-checkbox" [class.checked]="batchForm.days.includes(day)">
+              <input type="checkbox" [checked]="batchForm.days.includes(day)" (change)="toggleBatchDay(day)" />
+              <span>{{ day }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="batch-link">Live Meeting Link</label>
+            <input id="batch-link" type="url" [(ngModel)]="batchForm.meetingLink" name="meetingLink" placeholder="https://meet.google.com/..." />
+          </div>
+          <div class="form-group">
+            <label for="batch-location">Classroom / Location</label>
+            <input id="batch-location" type="text" [(ngModel)]="batchForm.classroomLocation" name="classroomLocation" placeholder="Online Interactive or Room 102" />
+          </div>
+        </div>
+
+        <div class="form-row col-3">
+          <div class="form-group">
+            <label for="batch-start">Start Date *</label>
+            <input id="batch-start" type="date" [(ngModel)]="batchForm.startDate" name="startDate" (change)="onBatchScheduleInputsChange()" required />
+          </div>
+          <div class="form-group">
+            <label for="batch-sessions">Teaching Days (Sessions) *</label>
+            <input id="batch-sessions" type="number" min="1" max="365" [(ngModel)]="batchForm.totalSessions" name="totalSessions" placeholder="e.g. 15" (change)="onBatchScheduleInputsChange()" />
+          </div>
+          <div class="form-group">
+            <label for="batch-end">Calculated End Date</label>
+            <div style="display:flex; gap:0.4rem; align-items:center;">
+              <input id="batch-end" type="date" [(ngModel)]="batchForm.endDate" name="endDate" style="flex:1;" />
+              <button
+                type="button"
+                class="btn-secondary btn-sm"
+                (click)="autoCalculateBatchEndDate()"
+                [disabled]="calculatingBatchSchedule || !batchForm.startDate || !batchForm.totalSessions"
+                title="Calculate end date skipping weekly offs and institutional holidays"
+              >
+                {{ calculatingBatchSchedule ? '...' : '⚡ Auto-Calc' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schedule Preview Alert Banner -->
+        <div *ngIf="batchScheduleCalc" class="alert-box info" style="font-size:0.85rem; margin-top:-0.25rem; margin-bottom:1rem; border-left:4px solid #2563eb; background:#eff6ff; padding:0.6rem 0.8rem; border-radius:6px;">
+          <div style="font-weight:700; color:#1e40af; margin-bottom:0.25rem;">
+            🗓️ Schedule Engine: {{ batchScheduleCalc.totalSessions }} Active Sessions Calculated
+          </div>
+          <div style="color:#334155;">
+            Spans <strong>{{ batchScheduleCalc.calendarDaysSpan }} calendar days</strong> ({{ batchScheduleCalc.startDate }} &rarr; {{ batchScheduleCalc.endDate }}).
+          </div>
+          <div *ngIf="batchScheduleCalc.skippedHolidays.length > 0" style="margin-top:0.3rem; color:#b45309; font-weight:600;">
+            🏛️ <em>Excluded Holidays ({{ batchScheduleCalc.skippedHolidays.length }}):</em>
+            <span *ngFor="let h of batchScheduleCalc.skippedHolidays" style="display:inline-block; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; margin-left:4px; font-size:0.8rem;">
+              {{ h.name }} ({{ h.date }})
+            </span>
+          </div>
+          <div style="margin-top:0.2rem; color:#64748b; font-size:0.8rem;">
+            🏖️ <em>Excluded Non-Working Days / Weekends:</em> {{ batchScheduleCalc.skippedWeekendDays }} days
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label for="batch-status">Status</label>
+            <select id="batch-status" [(ngModel)]="batchForm.status" name="status">
+              <option value="UPCOMING">Upcoming</option>
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="batch-notes">Notes / Syllabus Outline</label>
+            <input id="batch-notes" type="text" [(ngModel)]="batchForm.notes" name="notes" placeholder="e.g. Week 1 Foundations, Week 2 APIs..." />
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn-outline" (click)="closeBatchModal()">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="batchFormSaving">
+            {{ batchFormSaving ? 'Saving...' : (isEditingBatch ? 'Update Batch' : 'Create Batch') }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 10: INSTITUTIONAL HOLIDAYS MASTER (OPTION B) -->
+  <!-- ======================================================== -->
+  <div *ngIf="showHolidaysModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card modal-lg">
+      <header class="modal-header">
+        <div>
+          <h3>🏛️ Institutional &amp; Government Holidays Master</h3>
+          <p class="panel-sub" style="margin: 0; font-size: 0.85rem;">
+            Global holidays declared here are automatically excluded from all batch class schedules and protect trainers from false morning absence cut-off alerts.
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeHolidaysModal()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <!-- Add Holiday Form -->
+        <div class="holiday-add-box" style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+          <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #1e293b;">+ Declare New Institutional Holiday</h4>
+          <div *ngIf="holidayError" class="alert-box error" style="margin-bottom: 0.75rem;">{{ holidayError }}</div>
+          <div class="form-row col-3">
+            <div class="form-group">
+              <label for="hol-date">Date *</label>
+              <input id="hol-date" type="date" [(ngModel)]="holidayForm.date" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="hol-name">Holiday Name *</label>
+              <input id="hol-name" type="text" [(ngModel)]="holidayForm.name" placeholder="e.g. Diwali, Pongal, Republic Day" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="hol-type">Holiday Category</label>
+              <select id="hol-type" [(ngModel)]="holidayForm.type" class="form-select">
+                <option value="GOVERNMENT">Government / Public Holiday</option>
+                <option value="INSTITUTIONAL">Institutional / TVK Holiday</option>
+                <option value="FESTIVAL">Festival Holiday</option>
+                <option value="OTHER">Other Leave Day</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top: 0.5rem; display: flex; gap: 0.75rem; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; margin: 0;">
+              <label for="hol-desc">Description / Notes (Optional)</label>
+              <input id="hol-desc" type="text" [(ngModel)]="holidayForm.description" placeholder="Optional circular reference or note..." class="form-input" />
+            </div>
+            <button type="button" class="btn-primary" (click)="saveInstitutionalHoliday()" [disabled]="savingHoliday">
+              {{ savingHoliday ? 'Saving...' : '✓ Add Holiday' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Holidays List Table -->
+        <div class="section-head" style="margin-bottom: 0.75rem;">
+          <h4>Declared Holidays Calendar ({{ institutionalHolidays.length }})</h4>
+        </div>
+
+        <div *ngIf="loadingHolidays" class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading institutional holidays...</p>
+        </div>
+
+        <div class="table-container small" *ngIf="!loadingHolidays">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Holiday Name</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let hol of institutionalHolidays">
+                <td class="font-bold">{{ hol.date }}</td>
+                <td>
+                  <strong>{{ hol.name }}</strong>
+                </td>
+                <td>
+                  <span class="status-badge status-warning">
+                    {{ hol.type }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="hol.description">{{ hol.description }}</span>
+                  <span *ngIf="!hol.description" class="muted">&mdash;</span>
+                </td>
+                <td style="text-align: right;">
+                  <button type="button" class="btn-sm btn-outline" style="color: #dc2626; border-color: #fca5a5;" (click)="deleteInstitutionalHoliday(hol.id || hol._id || hol.date)" title="Remove holiday">
+                    ✕ Remove
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!institutionalHolidays.length">
+                <td colspan="5" class="empty-cell">
+                  No institutional holidays declared yet. Use the form above to add government and institutional holidays.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-primary" (click)="closeHolidaysModal()">Done</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 11: TRAINER STUDENT ROSTER MODAL (PHASE 1) -->
+  <!-- ======================================================== -->
+  <div *ngIf="showTrainerRosterModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card modal-lg">
+      <header class="modal-header">
+        <div>
+          <h3>Assigned Students Roster</h3>
+          <p class="panel-sub" *ngIf="selectedRosterTrainer as tr">
+            Trainer: <strong>{{ tr.name }}</strong> ({{ tr.id }}) &bull; {{ tr.specialization || 'General Trainer' }} &bull;
+            Capacity: <strong>{{ tr.currentStudentCount }} / {{ tr.maxCapacity }}</strong>
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeTrainerRoster()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="roster-top-actions" *ngIf="selectedRosterTrainer as tr">
+          <div class="roster-summary-chip">
+            <span>Enrolled Students: <strong>{{ rosterStudents.length }}</strong></span>
+            <span class="status-badge" [ngClass]="getAvailabilityBadgeClass(tr.availability)">
+              ● {{ tr.availability.replace('_', ' ') }}
+            </span>
+          </div>
+          <button type="button" class="btn-primary btn-sm" (click)="jumpToTrainerAttendance(tr)" title="Mark daily attendance for these students">
+            📅 Take Daily Attendance
+          </button>
+        </div>
+
+        <div *ngIf="loadingRoster" class="loading-state-inline">
+          <div class="spinner-sm"></div> Loading assigned students...
+        </div>
+
+        <div class="table-container" *ngIf="!loadingRoster">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Candidate Name</th>
+                <th>Enrolled Course</th>
+                <th>Contact</th>
+                <th>Allocated On</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let student of rosterStudents">
+                <td class="code-cell font-bold">{{ student.id }}</td>
+                <td>
+                  <button type="button" class="btn-link-student" (click)="viewStudentDetail(student.id)" title="Click to view candidate 360 profile">
+                    {{ student.name }} ↗
+                  </button>
+                </td>
+                <td><span class="course-badge">{{ student.enrolledCourse }}</span></td>
+                <td>
+                  <div class="user-cell">
+                    <small>{{ student.email }}</small>
+                    <small *ngIf="student.phone" class="muted">📞 {{ student.phone }}</small>
+                  </div>
+                </td>
+                <td>
+                  <span *ngIf="student.trainerAssignedAt">{{ student.trainerAssignedAt | date:'mediumDate' }}</span>
+                  <span *ngIf="!student.trainerAssignedAt" class="muted">&mdash;</span>
+                </td>
+                <td>
+                  <span class="status-badge" [class.badge-green]="student.trainerAllocationStatus === 'ASSIGNED'" [class.badge-blue]="student.trainerAllocationStatus === 'REASSIGNED'">
+                    ● {{ student.trainerAllocationStatus }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button type="button" class="btn-sm btn-outline" (click)="viewStudentDetail(student.id)" title="View Details &amp; Attendance">
+                      👤 Details
+                    </button>
+                    <button type="button" class="btn-sm btn-primary" (click)="openSingleAllocateModal(student)" title="Reassign to another trainer">
+                      🔄 Reassign
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="!rosterStudents.length">
+                <td colspan="7" class="empty-cell">No students currently allocated to this trainer. Use the Student Allocation tab to assign candidates.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-outline" (click)="closeTrainerRoster()">Close</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 12: STUDENT 360° PROFILE & ATTENDANCE SUMMARY (PHASE 1) -->
+  <!-- ======================================================== -->
+  <div *ngIf="showStudentDetailModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card modal-lg">
+      <header class="modal-header">
+        <div>
+          <h3>Student Training &amp; Attendance Profile</h3>
+          <p class="panel-sub" *ngIf="studentDetailSummary?.student as st">
+            Candidate: <strong>{{ st.name }}</strong> ({{ st._id || st.id }}) &bull; {{ st.enrolledCourse || st.courseName || 'Enrolled Student' }}
+          </p>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeStudentDetail()" aria-label="Close modal">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <div *ngIf="loadingStudentDetail" class="loading-state-inline">
+          <div class="spinner-sm"></div> Fetching student performance & attendance records...
+        </div>
+
+        <div *ngIf="studentDetailError" class="alert-box error">{{ studentDetailError }}</div>
+
+        <div *ngIf="!loadingStudentDetail && studentDetailSummary as summary">
+          <!-- Student & Trainer Info Bar -->
+          <div class="student-info-grid">
+            <div class="info-card">
+              <span class="info-lbl">Candidate Info</span>
+              <strong>{{ summary.student?.name }}</strong>
+              <div class="info-sub">{{ summary.student?.email }}</div>
+              <div class="info-sub" *ngIf="summary.student?.phone">📞 {{ summary.student?.phone }}</div>
+              <div class="info-sub" *ngIf="summary.student?.qualification">🎓 {{ summary.student?.qualification }}</div>
+            </div>
+            <div class="info-card">
+              <span class="info-lbl">Enrolled Track</span>
+              <strong class="course-name-text">{{ summary.student?.enrolledCourse || summary.student?.courseName || 'General' }}</strong>
+              <div class="info-sub">Status: <span class="badge-green">● Enrolled Active</span></div>
+              <div class="info-sub" *ngIf="summary.student?.createdAt">Joined: {{ summary.student?.createdAt | date:'mediumDate' }}</div>
+            </div>
+            <div class="info-card">
+              <span class="info-lbl">Assigned Trainer</span>
+              <div *ngIf="summary.assignedTrainer as tr">
+                <strong>{{ tr.name }}</strong> ({{ tr.id }})
+                <div class="info-sub">{{ tr.email }}</div>
+                <div class="info-sub">{{ tr.specialization || 'Trainer' }}</div>
+              </div>
+              <div *ngIf="!summary.assignedTrainer" class="muted-italic">
+                ⚠️ No trainer currently allocated
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Performance Ribbon -->
+          <div class="mini-metrics-strip" style="margin-top: 1rem;" *ngIf="summary.attendanceStats as stats">
+            <div class="mini-metric">
+              <span class="mini-val font-bold" [class.text-success]="stats.attendancePercent >= 80" [class.text-danger]="stats.attendancePercent < 70">
+                {{ stats.attendancePercent }}%
+              </span>
+              <span class="mini-lbl">Overall Attendance</span>
+            </div>
+            <div class="mini-metric">
+              <span class="mini-val">{{ stats.totalSessions }}</span>
+              <span class="mini-lbl">Total Sessions</span>
+            </div>
+            <div class="mini-metric text-success">
+              <span class="mini-val">{{ stats.presentCount }}</span>
+              <span class="mini-lbl">Present</span>
+            </div>
+            <div class="mini-metric text-warning">
+              <span class="mini-val">{{ stats.lateCount }}</span>
+              <span class="mini-lbl">Late</span>
+            </div>
+            <div class="mini-metric text-danger">
+              <span class="mini-val">{{ stats.absentCount }}</span>
+              <span class="mini-lbl">Absent</span>
+            </div>
+          </div>
+
+          <!-- Recent Attendance History Table -->
+          <div class="sub-section" style="margin-top: 1.5rem;">
+            <div class="section-title-sm">
+              <span>📅 Recent Attendance History</span>
+              <span class="badge-neutral" *ngIf="summary.recentAttendance">{{ summary.recentAttendance.length }} Logs</span>
+            </div>
+            <div class="table-container max-h-250">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Attendance Status</th>
+                    <th>Topic Covered</th>
+                    <th>Remarks</th>
+                    <th>Marked By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let att of summary.recentAttendance">
+                    <td class="font-bold">{{ att.date }}</td>
+                    <td>
+                      <span
+                        class="status-badge"
+                        [class.badge-green]="att.status === 'PRESENT'"
+                        [class.badge-yellow]="att.status === 'LATE'"
+                        [class.badge-red]="att.status === 'ABSENT'"
+                      >
+                        ● {{ att.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <span *ngIf="att.topicCovered">{{ att.topicCovered }}</span>
+                      <span class="muted-italic" *ngIf="!att.topicCovered">&mdash;</span>
+                    </td>
+                    <td>
+                      <span *ngIf="att.remarks">{{ att.remarks }}</span>
+                      <span class="muted-italic" *ngIf="!att.remarks">&mdash;</span>
+                    </td>
+                    <td><small class="muted">{{ att.markedBy || 'Trainer' }}</small></td>
+                  </tr>
+                  <tr *ngIf="!summary.recentAttendance?.length">
+                    <td colspan="5" class="empty-cell">No attendance recorded yet for this student.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-outline" (click)="closeStudentDetail()">Close</button>
+      </footer>
+    </div>
+  </div>
+</div>

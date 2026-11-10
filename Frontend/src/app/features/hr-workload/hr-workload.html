@@ -1,0 +1,594 @@
+<div class="workload-container">
+  <!-- Header -->
+  <header class="page-head">
+    <span class="eyebrow">ADMINISTRATION & WORKLOAD</span>
+    <h2>HR Workload Management</h2>
+    <p>Monitor HR team capacity, distribute candidates, reassign active workflows, and audit assignment history.</p>
+  </header>
+
+  <!-- Notification Toast -->
+  <div *ngIf="notificationMessage" class="toast-banner" [ngClass]="notificationType">
+    <span>{{ notificationMessage }}</span>
+    <button class="toast-close" (click)="notificationMessage = ''">&times;</button>
+  </div>
+
+  <!-- Summary Cards (Clickable Quick Filters) -->
+  <section class="metrics-grid" *ngIf="overview?.summary as sum">
+    <div class="metric-card clickable" (click)="filterByCard('active')" title="Click to view all active candidates">
+      <div class="metric-icon blue">👥</div>
+      <div class="metric-data">
+        <span class="metric-title">Active Candidates</span>
+        <span class="metric-value">{{ sum.totalActiveCandidates }}</span>
+      </div>
+    </div>
+    <div class="metric-card clickable" (click)="filterByCard('unassigned')" title="Click to view unassigned candidates">
+      <div class="metric-icon orange">⏳</div>
+      <div class="metric-data">
+        <span class="metric-title">Unassigned</span>
+        <span class="metric-value">{{ sum.unassignedCandidates }}</span>
+      </div>
+    </div>
+    <div class="metric-card clickable" (click)="filterByCard('assigned')" title="Click to view assigned candidates">
+      <div class="metric-icon indigo">📌</div>
+      <div class="metric-data">
+        <span class="metric-title">Currently Assigned</span>
+        <span class="metric-value">{{ sum.currentlyAssignedCandidates }}</span>
+      </div>
+    </div>
+    <div class="metric-card clickable" (click)="filterByCard('pending')" title="Click to view pending review candidates">
+      <div class="metric-icon yellow">📑</div>
+      <div class="metric-data">
+        <span class="metric-title">Pending Review</span>
+        <span class="metric-value">{{ sum.pendingCandidates }}</span>
+      </div>
+    </div>
+    <div class="metric-card clickable" (click)="filterByCard('active')" title="Click to view overdue candidates">
+      <div class="metric-icon red">⚠️</div>
+      <div class="metric-data">
+        <span class="metric-title">Overdue</span>
+        <span class="metric-value">{{ sum.overdueCandidates }}</span>
+      </div>
+    </div>
+    <div class="metric-card clickable" (click)="filterByCard('completed')" title="Click to view completed candidates">
+      <div class="metric-icon green">✅</div>
+      <div class="metric-data">
+        <span class="metric-title">Completed</span>
+        <span class="metric-value">{{ sum.completedCandidates }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Module Navigation Tabs -->
+  <nav class="module-tabs">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'overview'"
+      (click)="activeTab = 'overview'"
+    >
+      HR Workload Overview
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'candidates'"
+      (click)="activeTab = 'candidates'"
+    >
+      Candidate Assignment ({{ totalCandidates }})
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'history'"
+      (click)="activeTab = 'history'"
+    >
+      Assignment History
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab === 'activity'"
+      (click)="activeTab = 'activity'"
+    >
+      Activity Feed
+    </button>
+  </nav>
+
+  <!-- TAB 1: HR WORKLOAD OVERVIEW -->
+  <section *ngIf="activeTab === 'overview'" class="tab-content">
+    <div class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h3>HR Team Workload & Distribution</h3>
+          <p>Real-time capacity tracking across all active HR team members. Click an HR member or their assigned count to filter candidate details.</p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>HR Member</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th class="text-center">Currently Assigned</th>
+              <th class="text-center">Previously Handled</th>
+              <th class="text-center">Pending</th>
+              <th class="text-center">Screening</th>
+              <th class="text-center">Interview</th>
+              <th class="text-center">Completed</th>
+              <th class="text-center">Overdue</th>
+              <th>Last Activity</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let hr of overview?.hrMembers">
+              <td>
+                <div class="user-cell clickable-text" (click)="viewHrDetails(hr.employeeId)">
+                  <span class="avatar">{{ hr.name.charAt(0) }}</span>
+                  <div>
+                    <strong>{{ hr.name }}</strong>
+                    <small class="text-muted d-block">ID: {{ hr.employeeId }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="contact-cell">
+                  <span>{{ hr.email }}</span>
+                  <small *ngIf="hr.phone" class="text-muted d-block">{{ hr.phone }}</small>
+                </div>
+              </td>
+              <td>
+                <span class="badge" [class.badge-success]="hr.active" [class.badge-secondary]="!hr.active">
+                  {{ hr.active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="text-center font-weight-bold">
+                <span class="count-pill primary clickable-pill" (click)="filterByHr(hr.employeeId)" title="Click to view candidates assigned to {{ hr.name }}">
+                  {{ hr.currentlyAssignedCount }}
+                </span>
+              </td>
+              <td class="text-center font-weight-bold">
+                <span class="count-pill secondary">{{ hr.previouslyHandledCount }}</span>
+              </td>
+              <td class="text-center">{{ hr.pendingCount }}</td>
+              <td class="text-center">{{ hr.screeningCount }}</td>
+              <td class="text-center">{{ hr.interviewCount }}</td>
+              <td class="text-center">{{ hr.completedCount }}</td>
+              <td class="text-center">
+                <span *ngIf="hr.overdueCount > 0" class="badge badge-danger">{{ hr.overdueCount }}</span>
+                <span *ngIf="hr.overdueCount === 0" class="text-muted">0</span>
+              </td>
+              <td>
+                <span *ngIf="hr.lastActivityDate; else noActivity">
+                  {{ hr.lastActivityDate | date:'mediumDate' }}
+                  <small class="text-muted d-block">{{ hr.lastActivityDate | date:'shortTime' }}</small>
+                </span>
+                <ng-template #noActivity>
+                  <span class="text-muted">No recent activity</span>
+                </ng-template>
+              </td>
+              <td class="text-right action-btns">
+                <button class="btn btn-outline btn-sm" (click)="filterByHr(hr.employeeId)">
+                  View Candidates
+                </button>
+                <button class="btn btn-outline btn-sm" (click)="viewHrDetails(hr.employeeId)">
+                  Profile
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="overview?.hrMembers?.length === 0">
+              <td colspan="12" class="text-center py-4 text-muted">No active HR members found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: CANDIDATE ASSIGNMENT -->
+  <section *ngIf="activeTab === 'candidates'" class="tab-content">
+    <div class="card-panel">
+      <!-- Toolbar -->
+      <div class="filters-toolbar">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Search candidates by name, email, phone, role..."
+            [(ngModel)]="candidateSearch"
+            (keyup.enter)="onFilterChange()"
+          />
+          <button class="btn btn-primary" (click)="onFilterChange()">Search</button>
+        </div>
+
+        <div class="filter-group">
+          <label>HR Assignee:</label>
+          <select [(ngModel)]="selectedHrFilter" (change)="onFilterChange()">
+            <option value="all">All HR Members</option>
+            <option value="unassigned">Unassigned Only</option>
+            <option value="assigned">Assigned Only</option>
+            <option *ngFor="let hr of overview?.hrMembers" [value]="hr.employeeId">
+              {{ hr.name }} ({{ hr.employeeId }})
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Stage:</label>
+          <select [(ngModel)]="selectedStageFilter" (change)="onFilterChange()">
+            <option value="all">All Stages</option>
+            <option value="pending">Pending Review (New/Assigned)</option>
+            <option value="screening">Screening (Called/Interested)</option>
+            <option value="interview">Interview Scheduled</option>
+            <option value="completed">Completed / Selected</option>
+          </select>
+        </div>
+
+        <div class="bulk-actions" *ngIf="selectedCandidateIds.size > 0">
+          <button class="btn btn-primary" (click)="openBulkAssignModal()">
+            Assign Selected ({{ selectedCandidateIds.size }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Candidate Table -->
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th width="40">
+                <input
+                  type="checkbox"
+                  [checked]="allOnPageSelected()"
+                  (change)="toggleSelectAll()"
+                />
+              </th>
+              <th>Candidate Name & ID</th>
+              <th>Contact Details</th>
+              <th>Job Role</th>
+              <th>Recruitment Stage</th>
+              <th>Assigned HR</th>
+              <th>Resume</th>
+              <th>Applied / Updated</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of candidates">
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="isCandidateSelected(c.id)"
+                  (change)="toggleCandidateSelection(c.id)"
+                />
+              </td>
+              <td>
+                <div class="candidate-identity">
+                  <strong>{{ c.name }}</strong>
+                  <span class="candidate-id">ID: {{ c.id }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="contact-info">
+                  <span>{{ c.email }}</span>
+                  <small class="text-muted d-block">{{ c.phone }}</small>
+                </div>
+              </td>
+              <td>
+                <span class="job-role">{{ c.position || 'Not specified' }}</span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="getStatusClass(c.status)">
+                  {{ formatStatus(c.status) }}
+                </span>
+              </td>
+              <td>
+                <div *ngIf="c.assignedToName; else unassigned">
+                  <span class="assigned-pill">{{ c.assignedToName }}</span>
+                  <small class="text-muted d-block">ID: {{ c.assignedToId }}</small>
+                </div>
+                <ng-template #unassigned>
+                  <span class="unassigned-tag">Unassigned</span>
+                </ng-template>
+              </td>
+              <td>
+                <a
+                  *ngIf="c.resumeFileId"
+                  [href]="'/api/resumes/' + c.resumeFileId"
+                  target="_blank"
+                  class="resume-link"
+                  title="View or download resume"
+                >
+                  📄 {{ c.resumeName || 'View Resume' }}
+                </a>
+                <span *ngIf="!c.resumeFileId" class="text-muted">—</span>
+              </td>
+              <td>
+                <small class="text-muted d-block">{{ c.updatedAt | date:'mediumDate' }}</small>
+              </td>
+              <td class="text-right">
+                <button
+                  class="btn btn-sm"
+                  [class.btn-primary]="!c.assignedToId"
+                  [class.btn-outline]="!!c.assignedToId"
+                  (click)="openAssignModalForOne(c)"
+                >
+                  {{ c.assignedToId ? 'Reassign' : 'Assign' }}
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="candidates.length === 0 && !loading">
+              <td colspan="9" class="text-center py-5 text-muted">
+                No candidates match your current filter criteria.
+              </td>
+            </tr>
+            <tr *ngIf="loading">
+              <td colspan="9" class="text-center py-5">
+                <span class="spinner"></span> Loading candidate details...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar" *ngIf="totalPages > 1">
+        <span class="page-info">
+          Showing page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong> ({{ totalCandidates }} total)
+        </span>
+        <div class="page-buttons">
+          <button class="btn btn-outline btn-sm" [disabled]="currentPage <= 1" (click)="changePage(-1)">
+            Previous
+          </button>
+          <button class="btn btn-outline btn-sm" [disabled]="currentPage >= totalPages" (click)="changePage(1)">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: ASSIGNMENT HISTORY -->
+  <section *ngIf="activeTab === 'history'" class="tab-content">
+    <div class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Assignment & Reassignment Audit Trail</h3>
+          <p>Chronological history of candidate ownership transfers with reasons and audit timestamps.</p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Candidate</th>
+              <th>Action</th>
+              <th>Previous HR</th>
+              <th>New HR</th>
+              <th>Reason for Assignment</th>
+              <th>Assigned By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of history">
+              <td>
+                <span>{{ item.assignedAt | date:'mediumDate' }}</span>
+                <small class="text-muted d-block">{{ item.assignedAt | date:'mediumTime' }}</small>
+              </td>
+              <td>
+                <strong>{{ item.candidateName }}</strong>
+                <small class="text-muted d-block">ID: {{ item.candidateId }}</small>
+              </td>
+              <td>
+                <span class="badge" [class.badge-info]="item.action === 'ASSIGNED'" [class.badge-warning]="item.action === 'REASSIGNED'">
+                  {{ item.action || 'ASSIGNED' }}
+                </span>
+              </td>
+              <td>
+                <span *ngIf="item.previousAssigneeName; else noPrevious">
+                  {{ item.previousAssigneeName }}
+                </span>
+                <ng-template #noPrevious>
+                  <span class="text-muted">— Unassigned —</span>
+                </ng-template>
+              </td>
+              <td>
+                <strong>{{ item.assignedToName }}</strong>
+              </td>
+              <td>
+                <span *ngIf="item.reason; else noReason">{{ item.reason }}</span>
+                <ng-template #noReason><span class="text-muted">—</span></ng-template>
+              </td>
+              <td>
+                <span class="text-muted">{{ item.assignedByName }}</span>
+              </td>
+            </tr>
+            <tr *ngIf="history.length === 0">
+              <td colspan="7" class="text-center py-5 text-muted">
+                No assignment history recorded yet.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: ACTIVITY FEED -->
+  <section *ngIf="activeTab === 'activity'" class="tab-content">
+    <div class="card-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Candidate Activity Feed</h3>
+          <p>Track all assignments, reassignments, stage transitions, calls, and recruit actions in real time.</p>
+        </div>
+      </div>
+
+      <div class="activity-timeline">
+        <div class="timeline-item" *ngFor="let act of activities">
+          <div class="timeline-dot" [ngClass]="act.type.toLowerCase()"></div>
+          <div class="timeline-content">
+            <div class="timeline-head">
+              <span class="activity-type">{{ act.type }}</span>
+              <span class="activity-time">{{ act.createdAt | date:'medium' }}</span>
+            </div>
+            <p class="activity-message">{{ act.message }}</p>
+            <div class="activity-meta">
+              <span>Candidate: <strong>{{ act.candidateName }}</strong></span>
+              <span class="separator">•</span>
+              <span>Action by: <strong>{{ act.performedBy }}</strong></span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="activities.length === 0" class="text-center py-5 text-muted">
+          No activities recorded yet.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASSIGN / REASSIGN MODAL -->
+  <div class="modal-backdrop" *ngIf="showAssignModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>{{ assignTargetCandidates.length > 1 ? 'Bulk Assign Candidates' : 'Assign / Reassign Candidate' }}</h3>
+        <button class="modal-close" (click)="closeAssignModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <span>Recruitment stages (Screening, Interview, etc.) will remain preserved during reassignment.</span>
+        </div>
+
+        <div class="selected-summary">
+          <label>Target Candidate(s):</label>
+          <div class="candidate-tags-container">
+            <span class="candidate-tag" *ngFor="let c of assignTargetCandidates">
+              {{ c.name }} <small>({{ c.assignedToName || 'Unassigned' }})</small>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group mt-3">
+          <label>Select New HR Member: *</label>
+          <select [(ngModel)]="selectedTargetHrId" class="form-control">
+            <option value="" disabled selected>— Select Active HR Member —</option>
+            <option *ngFor="let hr of overview?.hrMembers" [value]="hr.employeeId">
+              {{ hr.name }} ({{ hr.employeeId }}) — Currently: {{ hr.currentlyAssignedCount }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group mt-3">
+          <label>Reason for Assignment / Reassignment (Optional):</label>
+          <textarea
+            class="form-control"
+            rows="3"
+            placeholder="e.g. Workload rebalancing, leave coverage, specialized domain screening..."
+            [(ngModel)]="assignmentReason"
+          ></textarea>
+        </div>
+
+        <div *ngIf="assignError" class="alert alert-danger mt-2">
+          {{ assignError }}
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeAssignModal()" [disabled]="assignSubmitting">
+          Cancel
+        </button>
+        <button class="btn btn-primary" (click)="submitAssignment()" [disabled]="assignSubmitting">
+          <span *ngIf="assignSubmitting" class="spinner"></span>
+          {{ assignSubmitting ? 'Saving...' : 'Confirm & Save Assignment' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HR DETAILS MODAL -->
+  <div class="modal-backdrop" *ngIf="showHrModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>HR Member Workload Profile</h3>
+        <button class="modal-close" (click)="closeHrModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedHrDetails as d">
+        <div class="hr-profile-header">
+          <div class="profile-avatar">{{ d.hr.name.charAt(0) }}</div>
+          <div class="profile-meta">
+            <h4>{{ d.hr.name }}</h4>
+            <p>{{ d.hr.email }} • ID: {{ d.hr.employeeId }}</p>
+          </div>
+          <div class="profile-status">
+            <span class="badge" [class.badge-success]="d.hr.active">
+              {{ d.hr.active ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="sub-section mt-4">
+          <h4>Currently Assigned Candidates ({{ d.currentCandidates.length }})</h4>
+          <div class="table-responsive small-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Role</th>
+                  <th>Stage</th>
+                  <th>Applied Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of d.currentCandidates">
+                  <td><strong>{{ c.name }}</strong></td>
+                  <td>{{ c.position }}</td>
+                  <td><span class="badge" [ngClass]="getStatusClass(c.status)">{{ formatStatus(c.status) }}</span></td>
+                  <td>{{ c.appliedDate | date:'mediumDate' }}</td>
+                </tr>
+                <tr *ngIf="d.currentCandidates.length === 0">
+                  <td colspan="4" class="text-center py-3 text-muted">No candidates currently assigned.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="sub-section mt-4">
+          <h4>Previously Handled Candidates ({{ d.previousCandidates.length }})</h4>
+          <div class="table-responsive small-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Role</th>
+                  <th>Current HR</th>
+                  <th>Stage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of d.previousCandidates">
+                  <td><strong>{{ c.name }}</strong></td>
+                  <td>{{ c.position }}</td>
+                  <td>{{ c.assignedToName || 'Unassigned' }}</td>
+                  <td><span class="badge" [ngClass]="getStatusClass(c.status)">{{ formatStatus(c.status) }}</span></td>
+                </tr>
+                <tr *ngIf="d.previousCandidates.length === 0">
+                  <td colspan="4" class="text-center py-3 text-muted">No previously transferred candidates.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body text-center py-5" *ngIf="hrModalLoading">
+        <span class="spinner"></span> Loading HR profile data...
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeHrModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

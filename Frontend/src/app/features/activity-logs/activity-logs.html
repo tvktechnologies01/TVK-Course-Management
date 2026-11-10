@@ -1,0 +1,128 @@
+<section class="page-head">
+  <div>
+    <span class="eyebrow">AUDIT TRAIL</span>
+    <h2>Activity Logs</h2>
+    <p>Review important candidate actions and ownership changes.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="filters">
+    <div class="search-field">
+      <label>Search</label>
+      <input
+        type="text"
+        [(ngModel)]="search"
+        (ngModelChange)="onFilterChange()"
+        placeholder="Search candidate, activity or person..."
+      />
+    </div>
+
+    <div class="filter-field">
+      <label>Role</label>
+      <select [(ngModel)]="role" (ngModelChange)="onFilterChange()">
+        <option value="ALL">All roles</option>
+        <option value="MANAGER">Manager</option>
+        <option value="HR">HR</option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label>Person</label>
+      <select [(ngModel)]="person" (ngModelChange)="onFilterChange()">
+        <option value="ALL">All people</option>
+        <option *ngFor="let item of people" [value]="item">
+          {{ item }}
+        </option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label>Activity Type</label>
+      <select [(ngModel)]="type" (ngModelChange)="onFilterChange()">
+        <option value="ALL">All activity</option>
+        <option *ngFor="let item of types" [value]="item">
+          {{ label(item) }}
+        </option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label>Date</label>
+      <input
+        type="date"
+        [(ngModel)]="date"
+        (ngModelChange)="onFilterChange()"
+      />
+    </div>
+
+    <div class="filter-action">
+      <button type="button" (click)="clearFilters()">Clear</button>
+      <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="loading" title="Refresh logs">
+        {{ loading ? "..." : "Refresh" }}
+      </button>
+    </div>
+  </div>
+
+  <div class="result-bar">
+    <span *ngIf="loading" class="loading-tag">Loading logs...</span>
+    <span>
+      {{ filtered.length }}
+      {{ filtered.length === 1 ? "activity" : "activities" }}
+    </span>
+  </div>
+
+  <div class="loading-state" *ngIf="loading && !logs.length">
+    <p>Loading activity logs...</p>
+  </div>
+
+  <div
+    class="log"
+    *ngFor="let item of filtered"
+  >
+    <div class="icon">
+      {{ icon(item.type) }}
+    </div>
+
+    <div class="body">
+      <a
+        [routerLink]="[
+          '/candidates',
+          item.candidateId
+        ]"
+      >
+        {{ item.candidateName }}
+      </a>
+
+      <strong>
+        {{ item.message }}
+      </strong>
+
+      <span class="meta">
+        <span class="type">
+          {{ label(item.type) }}
+        </span>
+
+        <span>
+          {{ item.performedBy }}
+        </span>
+
+        <span class="role">
+          {{ roleLabel(item.performedBy) }}
+        </span>
+
+        <span>
+          {{ item.createdAt | date:'dd MMM yyyy, h:mm a' }}
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div
+    class="empty"
+    *ngIf="!loading && !filtered.length"
+  >
+    <strong>No activity logs found</strong>
+    <span>Try changing the filters or search text.</span>
+  </div>
+</section>

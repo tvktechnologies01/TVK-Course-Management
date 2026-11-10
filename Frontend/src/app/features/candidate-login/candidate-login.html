@@ -1,0 +1,176 @@
+<div class="login-page">
+  <div class="login-card">
+    <!-- TVK Technologies Branding -->
+    <header class="brand-header">
+      <div class="brand-mark">TVK</div>
+      <div class="brand-title">
+        <h1>TVK Technologies</h1>
+        <p>Candidate Portal &amp; Training System</p>
+      </div>
+    </header>
+
+    <!-- Standard Candidate Login Form (Shown when !showContactManagerForm) -->
+    <div *ngIf="!showContactManagerForm" class="form-container">
+      <h2>Candidate Sign In</h2>
+      <p class="subtitle">Access your course schedule, tasks, payments, receipts, and completion certificate.</p>
+
+      <div *ngIf="errorMessage" class="alert-box error" role="alert">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="successMessage" class="alert-box success" role="alert">
+        {{ successMessage }}
+      </div>
+
+      <form (ngSubmit)="login()" class="auth-form">
+        <div class="form-group">
+          <label for="username">Username or Registered Email</label>
+          <input
+            id="username"
+            type="text"
+            [(ngModel)]="username"
+            name="username"
+            placeholder="e.g. your_username or registered@email.com"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-input-wrapper">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Enter your candidate password"
+              autocomplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              class="btn-toggle-pw"
+              (click)="togglePasswordVisibility()"
+              [title]="showPassword ? 'Hide password' : 'Show password'"
+              aria-label="Toggle password visibility"
+            >
+              {{ showPassword ? '👁' : '👁‍🗨' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="credentials-notice">
+          <span class="notice-icon">ℹ️</span>
+          <span>Please log in using the credentials sent by the manager. If you need assistance or your credentials resent, please contact your manager or HR administrator.</span>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="loggingIn">
+          <span *ngIf="loggingIn" class="btn-spinner"></span>
+          {{ loggingIn ? 'Signing in to Portal...' : 'Sign In to Candidate Portal' }}
+        </button>
+      </form>
+
+      <!-- Replaced link section: Need help accessing your account? Contact Manager -> -->
+      <div class="portal-extra-links">
+        <p>Need help accessing your account?</p>
+        <button type="button" class="btn-link" (click)="openContactManager()">Contact Manager &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Contact Manager Form (Shown when showContactManagerForm) -->
+    <div *ngIf="showContactManagerForm" class="form-container">
+      <h2>Contact Manager</h2>
+      <p class="subtitle">Report sign-in issues or request login assistance from the manager.</p>
+
+      <div *ngIf="contactError" class="alert-box error" role="alert">
+        {{ contactError }}
+      </div>
+
+      <div *ngIf="contactSuccess" class="alert-box success" role="alert">
+        {{ contactSuccess }}
+      </div>
+
+      <form *ngIf="!contactSubmitted" (ngSubmit)="submitContactRequest()" class="auth-form">
+        <div class="form-group">
+          <label for="contactFullName">Full Name *</label>
+          <input
+            id="contactFullName"
+            type="text"
+            [(ngModel)]="contactFullName"
+            name="contactFullName"
+            placeholder="Enter your full name"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="contactEmail">Registered Email Address *</label>
+          <input
+            id="contactEmail"
+            type="email"
+            [(ngModel)]="contactEmail"
+            name="contactEmail"
+            placeholder="e.g. name@example.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="contactPhone">Phone Number *</label>
+          <input
+            id="contactPhone"
+            type="tel"
+            [(ngModel)]="contactPhone"
+            name="contactPhone"
+            placeholder="e.g. 9876543210 (10 digits)"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="contactCourse">Course Name *</label>
+          <select
+            id="contactCourse"
+            [(ngModel)]="contactCourse"
+            name="contactCourse"
+            class="form-select"
+            required
+          >
+            <option value="" disabled selected>-- Select your enrolled course --</option>
+            <option *ngFor="let course of courseList" [value]="course">{{ course }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="contactIssue">Describe Your Issue *</label>
+          <textarea
+            id="contactIssue"
+            [(ngModel)]="contactIssue"
+            name="contactIssue"
+            rows="3"
+            class="form-textarea"
+            placeholder="Explain the problem (e.g. Forgot password, unable to sign in, credentials not received, need password reset)"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-btn-row">
+          <button type="button" class="btn-secondary" (click)="closeContactManager()" [disabled]="submittingContact">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="submittingContact">
+            <span *ngIf="submittingContact" class="btn-spinner"></span>
+            {{ submittingContact ? 'Submitting Request...' : 'Submit Request' }}
+          </button>
+        </div>
+      </form>
+
+      <div *ngIf="contactSubmitted" class="submitted-actions">
+        <button type="button" class="btn-primary" (click)="closeContactManager()">
+          &larr; Back to Candidate Sign In
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
